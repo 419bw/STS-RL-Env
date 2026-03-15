@@ -47,6 +47,8 @@ bool DamageAction::update(GameState& state) {
         
         // 5. 发布事件
         state.eventBus.publish(EventType::ON_DAMAGE_TAKEN, state, target.get());
+        
+        // 死亡判定由 SBA（全局巡视）负责，Action 只管执行
     }
     return true;
 }

@@ -21,6 +21,10 @@ public:
     // 核心推进函数 (Tick)
     void tick(GameState& state);
 
+    // SBA 全局巡视 (State-Based Action Check)
+    // 在每个动作执行完毕后调用，检查全局状态变化
+    void sbaGlobalCheck(GameState& state);
+
     // 检查战斗是否结束
     void checkBattleEndCondition(GameState& state);
 };

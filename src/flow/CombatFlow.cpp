@@ -4,6 +4,41 @@
 #include <iostream>
 
 // ==========================================
+// SBA 全局巡视 (State-Based Action Check)
+// 
+// 在每个动作执行完毕后调用
+// 检查全局状态变化，如死亡判定
+// ==========================================
+void CombatFlow::sbaGlobalCheck(GameState& state) {
+    // 1. 玩家死亡判定
+    if (!state.isPlayerDead && state.player->isDead()) {
+        state.isPlayerDead = true;
+        ENGINE_TRACE("[SBA] 玩家已死亡！");
+    }
+    
+    // 2. 怪物死亡判定
+    if (!state.isMonsterDead) {
+        bool allMonstersDead = true;
+        for (const auto& monster : state.monsters) {
+            if (!monster->isDead()) {
+                allMonstersDead = false;
+                break;
+            }
+        }
+        if (allMonstersDead) {
+            state.isMonsterDead = true;
+            ENGINE_TRACE("[SBA] 所有怪物已死亡！");
+        }
+    }
+    
+    // 3. 未来可扩展：其他状态触发
+    // - 当生命值低于 X% 时触发遗物
+    // - 当手牌数为 0 时触发效果
+    // - 当能量为 0 时触发效果
+    // ...
+}
+
+// ==========================================
 // 检查战斗结束条件
 // ==========================================
 void CombatFlow::checkBattleEndCondition(GameState& state) {
@@ -26,6 +61,10 @@ void CombatFlow::tick(GameState& state) {
         if (action->update(state)) {
             state.actionQueue.pop();
         }
+        
+        // SBA：动作执行完毕后，进行全局巡视
+        sbaGlobalCheck(state);
+        
         checkBattleEndCondition(state);
         return; // 队列未清空前，冻结宏观状态机
     }
@@ -113,6 +152,9 @@ void CombatFlow::tick(GameState& state) {
             
             state.eventBus.publish(EventType::PHASE_ROUND_END, state);
             state.eventBus.publish(EventType::ON_ROUND_END, state);
+            
+            // SBA：轮次结束后也要检查状态
+            sbaGlobalCheck(state);
             
             checkBattleEndCondition(state);
             if (currentState != CombatState::BATTLE_END) {

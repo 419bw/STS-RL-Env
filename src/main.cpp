@@ -56,7 +56,6 @@ int main() {
                 else if (state.turnCount == 2) {
                     STS_LOG(state, "\n--- AI 决策：打出旋风斩 ---\n");
                     PlayerActions::playCard(state, whirlwind, nullptr);
-                    state.isMonsterDead = true;
                 }
                 hasPlayedCard = true;
             }
