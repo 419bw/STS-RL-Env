@@ -35,7 +35,12 @@ void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 旋风斩! 消耗了 " 
               << energyOnUse << " 点 X 费用。\n");
     
+    // 旋风斩：对每个怪物都造成 energyOnUse 次伤害
     for (int i = 0; i < energyOnUse; i++) {
-        state.addAction(std::make_unique<DamageAction>(state.monsters[0], 5));
+        for (auto& monster : state.monsters) {
+            if (!monster->isDead()) {
+                state.addAction(std::make_unique<DamageAction>(monster, 5));
+            }
+        }
     }
 }

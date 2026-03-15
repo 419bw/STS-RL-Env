@@ -16,7 +16,11 @@
 
 int main() {
     GameState state;
-    state.monsters.push_back(std::make_shared<Monster>("大嘴花", 40));
+    
+    // 多怪物测试：添加三个怪物
+    state.monsters.push_back(std::make_shared<Monster>("大嘴花", 30));
+    state.monsters.push_back(std::make_shared<Monster>("史莱姆", 50));
+    state.monsters.push_back(std::make_shared<Monster>("哥布林", 40));
 
     CombatFlow flow;
 
@@ -35,7 +39,7 @@ int main() {
     bool wantsToEndTurn = false;
     int lastTurnCount = 0;
 
-    for (int step = 0; step < 150; ++step) {
+    for (int step = 0; step < 200; ++step) {
         flow.tick(state);
         
         if (state.turnCount != lastTurnCount) {
@@ -50,12 +54,26 @@ int main() {
             
             if (!hasPlayedCard) {
                 if (state.turnCount == 1) {
-                    STS_LOG(state, "\n--- AI 决策：打出打击 ---\n");
+                    // 第一回合：对第一个怪物打出打击
+                    STS_LOG(state, "\n--- AI 决策：对大嘴花打出打击 ---\n");
                     PlayerActions::playCard(state, strike, state.monsters[0]);
                 } 
                 else if (state.turnCount == 2) {
-                    STS_LOG(state, "\n--- AI 决策：打出旋风斩 ---\n");
+                    // 第二回合：打出旋风斩（攻击所有怪物）
+                    STS_LOG(state, "\n--- AI 决策：打出旋风斩（攻击所有怪物） ---\n");
                     PlayerActions::playCard(state, whirlwind, nullptr);
+                }
+                else if (state.turnCount == 3) {
+                    // 第三回合：对第二个怪物打出打击
+                    if (!state.monsters[1]->isDead()) {
+                        STS_LOG(state, "\n--- AI 决策：对史莱姆打出打击 ---\n");
+                        PlayerActions::playCard(state, strike, state.monsters[1]);
+                        STS_LOG(state, "\n--- AI 决策：对哥布林打出打击 ---\n");
+                        PlayerActions::playCard(state, strike, state.monsters[2]);
+                    } else if (!state.monsters[2]->isDead()) {
+                        STS_LOG(state, "\n--- AI 决策：对哥布林打出打击 ---\n");
+                        PlayerActions::playCard(state, strike, state.monsters[2]);
+                    }
                 }
                 hasPlayedCard = true;
             }

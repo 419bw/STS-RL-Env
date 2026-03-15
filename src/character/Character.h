@@ -70,6 +70,7 @@ public:
 // ==========================================
 class Monster : public Character {
 public:
-    Monster(std::string n, int hp) : Character(n, hp) {}
-    // 实际项目中这里需要包含怪物的意图(Intent)系统
+    bool deathReported;  // 是否已播报死亡（避免重复播报）
+    
+    Monster(std::string n, int hp) : Character(n, hp), deathReported(false) {}
 };

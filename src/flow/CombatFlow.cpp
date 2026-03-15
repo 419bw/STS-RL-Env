@@ -13,10 +13,20 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
     // 1. 玩家死亡判定
     if (!state.isPlayerDead && state.player->isDead()) {
         state.isPlayerDead = true;
+        STS_LOG(state, "\n>>> [死亡] 玩家已倒下！ <<<\n");
         ENGINE_TRACE("[SBA] 玩家已死亡！");
     }
     
-    // 2. 怪物死亡判定
+    // 2. 怪物死亡判定（逐个检查，播报每个怪物的死亡）
+    for (auto& monster : state.monsters) {
+        if (monster->isDead() && !monster->deathReported) {
+            STS_LOG(state, "\n>>> [死亡] " << monster->name << " 被击败！ <<<\n");
+            monster->deathReported = true;  // 标记已播报，避免重复
+            ENGINE_TRACE("[SBA] " << monster->name << " 已死亡！");
+        }
+    }
+    
+    // 3. 检查是否所有怪物都死亡
     if (!state.isMonsterDead) {
         bool allMonstersDead = true;
         for (const auto& monster : state.monsters) {
@@ -31,7 +41,7 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
         }
     }
     
-    // 3. 未来可扩展：其他状态触发
+    // 4. 未来可扩展：其他状态触发
     // - 当生命值低于 X% 时触发遗物
     // - 当手牌数为 0 时触发效果
     // - 当能量为 0 时触发效果
