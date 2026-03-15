@@ -13,6 +13,11 @@
 // ==========================================
 
 float VulnerablePower::modifyDamageTaken(float damage) {
+    // 层数为 0 时不再生效
+    if (amount <= 0) {
+        return damage;
+    }
+    
     float final_damage = damage * 1.5f;
     ENGINE_TRACE("[" << name << "] 伤害修饰: " << damage << " -> " << final_damage 
                  << " (+" << (final_damage - damage) << ", 50%易伤)");
@@ -37,9 +42,12 @@ void VulnerablePower::onApply(GameState& state) {
                 return true;
             }
             
-            // 正常掉层
-            if (self->amount > 0) {
-                ENGINE_TRACE("VulnerablePower 轮次结束掉层: " << self->amount << " -> " << (self->amount - 1));
+            // 按照官方逻辑：
+            // - 如果层数为 0，直接移除
+            // - 否则，减少 1 层
+            if (self->amount == 0) {
+                gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
+            } else {
                 gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
             }
             return true;

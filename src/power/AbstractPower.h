@@ -28,6 +28,9 @@ public:
     // 状态挂载时触发，用于注册事件
     virtual void onApply(GameState& state) {}
     
+    // 状态移除时触发，用于清理（如取消事件订阅）
+    virtual void onRemove(GameState& state) {}
+    
     // 供数值修饰型状态重写
     virtual float modifyDamageTaken(float damage) { return damage; }
     virtual float modifyDamageDealt(float damage) { return damage; }

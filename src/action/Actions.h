@@ -66,3 +66,17 @@ public:
     ReducePowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p, int a);
     bool update(GameState& state) override;
 };
+
+// ==========================================
+// 具体动作：强制移除状态效果 (Remove Specific Power Action)
+// 
+// 无视层数，直接从目标身上移除指定的 Power
+// 用于状态层数归零时的清理
+// ==========================================
+class RemoveSpecificPowerAction : public AbstractAction {
+    std::shared_ptr<Character> target;
+    std::shared_ptr<AbstractPower> power;
+public:
+    RemoveSpecificPowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p);
+    bool update(GameState& state) override;
+};

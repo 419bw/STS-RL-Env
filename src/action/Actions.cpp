@@ -5,6 +5,7 @@
 #include "src/event/EventBus.h"
 #include "src/utils/Logger.h"
 #include <iostream>
+#include <algorithm>
 
 // ==========================================
 // DummyAction 实现
@@ -119,6 +120,9 @@ bool ApplyPowerAction::update(GameState& state) {
 
 // ==========================================
 // ReducePowerAction 实现
+// 
+// 只负责减少层数，不负责移除
+// 如果层数归零，推入 RemoveSpecificPowerAction 来清理
 // ==========================================
 ReducePowerAction::ReducePowerAction(std::shared_ptr<Character> t, 
                                      std::shared_ptr<AbstractPower> p, int a) 
@@ -130,9 +134,42 @@ bool ReducePowerAction::update(GameState& state) {
         STS_LOG(state, "-> " << target->name << " 的 [" << power->name 
                   << "] 减少了 " << reduceAmount << " 层，剩余 " 
                   << power->amount << " 层。\n");
+        
+        // 层数归零时，推入强制移除动作
         if (power->amount <= 0) {
             STS_LOG(state, "-> [" << power->name << "] 已完全消散。\n");
+            state.addAction(std::make_unique<RemoveSpecificPowerAction>(target, power));
         }
+    }
+    return true;
+}
+
+// ==========================================
+// RemoveSpecificPowerAction 实现
+// 
+// 无视层数，直接从目标身上移除指定的 Power
+// 触发 onRemove 遗言，用于清理事件订阅等
+// ==========================================
+RemoveSpecificPowerAction::RemoveSpecificPowerAction(std::shared_ptr<Character> t, 
+                                                      std::shared_ptr<AbstractPower> p) 
+    : target(t), power(p) {}
+
+bool RemoveSpecificPowerAction::update(GameState& state) {
+    if (power) {
+        STS_LOG(state, "-> 强制净化！[" << power->name << "] 被直接从 " 
+                  << target->name << " 身上移除。\n");
+        
+        // 触发遗言（如果有）
+        power->onRemove(state);
+        
+        // 无视层数，绝对抹杀
+        auto& powers = target->powers;
+        powers.erase(
+            std::remove(powers.begin(), powers.end(), power),
+            powers.end()
+        );
+        
+        ENGINE_TRACE("Power 强制移除: " << power->name << " 已从 " << target->name << " 身上移除");
     }
     return true;
 }
