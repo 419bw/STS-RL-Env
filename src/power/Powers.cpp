@@ -3,7 +3,48 @@
 #include "src/event/EventBus.h"
 #include "src/action/Actions.h"
 #include "src/character/Character.h"
+#include "src/utils/Logger.h"
 #include <iostream>
+
+// ==========================================
+// VulnerablePower 实现
+// 
+// 特性：轮次结束时掉层，有保护罩机制
+// ==========================================
+
+float VulnerablePower::modifyDamageTaken(float damage) {
+    float final_damage = damage * 1.5f;
+    ENGINE_TRACE("[" << name << "] 伤害修饰: " << damage << " -> " << final_damage 
+                 << " (+" << (final_damage - damage) << ", 50%易伤)");
+    return final_damage;
+}
+
+void VulnerablePower::onApply(GameState& state) {
+    std::weak_ptr<AbstractPower> weakSelf = shared_from_this();
+    
+    state.eventBus.subscribe(EventType::ON_ROUND_END, 
+        [weakSelf](GameState& gs, void*) -> bool {
+            auto self = weakSelf.lock();
+            if (!self) {
+                return false;
+            }
+            
+            // 检查保护罩
+            if (self->justApplied) {
+                // 刚挂上的状态，剥夺保护罩，本轮次不掉层
+                self->justApplied = false;
+                ENGINE_TRACE("VulnerablePower 保护罩解除: 下轮次开始正常掉层");
+                return true;
+            }
+            
+            // 正常掉层
+            if (self->amount > 0) {
+                ENGINE_TRACE("VulnerablePower 轮次结束掉层: " << self->amount << " -> " << (self->amount - 1));
+                gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
+            }
+            return true;
+        });
+}
 
 // ==========================================
 // PoisonPower 实现
@@ -22,43 +63,9 @@ void PoisonPower::onApply(GameState& state) {
             
             Character* current_turn_char = static_cast<Character*>(context);
             if (current_turn_char == self->owner.get() && self->amount > 0) {
-                std::cout << "[" << self->name << "] 触发！向队列推入 " << self->amount 
-                          << " 点伤害动作以及掉层动作。\n";
+                ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
                 
                 gs.addAction(std::make_unique<DamageAction>(self->owner, self->amount));
-                gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
-            }
-            return true;
-        });
-}
-
-// ==========================================
-// VulnerablePower 实现
-// 
-// 特性：轮次结束时掉层，有保护罩机制
-// ==========================================
-void VulnerablePower::onApply(GameState& state) {
-    std::weak_ptr<AbstractPower> weakSelf = shared_from_this();
-    
-    state.eventBus.subscribe(EventType::ON_ROUND_END, 
-        [weakSelf](GameState& gs, void*) -> bool {
-            auto self = weakSelf.lock();
-            if (!self) {
-                return false;
-            }
-            
-            // 检查保护罩
-            if (self->justApplied) {
-                // 刚挂上的状态，剥夺保护罩，本轮次不掉层
-                self->justApplied = false;
-                std::cout << "[" << self->name << "] 保护罩解除，下轮次开始正常掉层\n";
-                return true;
-            }
-            
-            // 正常掉层
-            if (self->amount > 0) {
-                std::cout << "[" << self->name << "] 轮次结束掉层："
-                          << self->amount << " -> " << (self->amount - 1) << "\n";
                 gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
             }
             return true;

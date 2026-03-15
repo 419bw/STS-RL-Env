@@ -2,6 +2,7 @@
 #include "src/gamestate/GameState.h"
 #include "src/event/EventBus.h"
 #include "src/card/AbstractCard.h"
+#include "src/utils/Logger.h"
 #include <iostream>
 
 // ==========================================
@@ -23,7 +24,7 @@ void CustomVajraRelic::onEquip(GameState& state) {
             
             AbstractCard* playedCard = static_cast<AbstractCard*>(context);
             if (playedCard->type == CardType::ATTACK) {
-                std::cout << "[" << self->name << "] 触发！这是一张攻击牌，产生额外效果。\n";
+                STS_LOG(gs, "[" << self->name << "] 触发！这是一张攻击牌，产生额外效果。\n");
             }
             return true;  // 继续监听
         });
@@ -46,8 +47,8 @@ void ChemicalXRelic::onEquip(GameState& state) {
             
             if (playingCard->cost == -1) {
                 playingCard->energyOnUse += 2;
-                std::cout << "[" << self->name << "] 触发！为 X 费牌注入额外能量。当前实际释放能量: " 
-                          << playingCard->energyOnUse << "\n";
+                STS_LOG(gs, "[" << self->name << "] 触发！为 X 费牌注入额外能量。当前实际释放能量: " 
+                          << playingCard->energyOnUse << "\n");
             }
             return true;  // 继续监听
         });

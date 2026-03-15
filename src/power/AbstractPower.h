@@ -28,7 +28,8 @@ public:
     // 状态挂载时触发，用于注册事件
     virtual void onApply(GameState& state) {}
     
-    // 供数值修饰型状态重写 (如易伤增加50%伤害)
+    // 供数值修饰型状态重写
     virtual float modifyDamageTaken(float damage) { return damage; }
     virtual float modifyDamageDealt(float damage) { return damage; }
+    virtual float modifyBlockGained(float block) { return block; }
 };

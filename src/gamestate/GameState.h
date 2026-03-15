@@ -27,6 +27,10 @@ public:
     // 宏观时间开关：记录当前是玩家回合还是怪物回合
     bool isPlayerTurn;
 
+    // RL 训练控制开关：默认开启，方便调试
+    // 接入 AI 训练时设为 false，可实现静默训练
+    bool enableLogging;
+
     // 游戏实体
     std::shared_ptr<Player> player;
     std::vector<std::shared_ptr<Monster>> monsters;
@@ -46,7 +50,8 @@ public:
         : turnCount(0),
           isPlayerDead(false),
           isMonsterDead(false),
-          isPlayerTurn(false) {
+          isPlayerTurn(false),
+          enableLogging(true) {
         player = std::make_shared<Player>("战士", 80);
     }
 

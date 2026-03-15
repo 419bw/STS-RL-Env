@@ -12,6 +12,7 @@
 #include "src/relic/Relics.h"
 #include "src/character/Character.h"
 #include "src/core/Types.h"
+#include "src/utils/Logger.h"
 
 int main() {
     GameState state;
@@ -49,11 +50,11 @@ int main() {
             
             if (!hasPlayedCard) {
                 if (state.turnCount == 1) {
-                    std::cout << "\n--- AI 决策：打出打击 ---\n";
+                    STS_LOG(state, "\n--- AI 决策：打出打击 ---\n");
                     PlayerActions::playCard(state, strike, state.monsters[0]);
                 } 
                 else if (state.turnCount == 2) {
-                    std::cout << "\n--- AI 决策：打出旋风斩 ---\n";
+                    STS_LOG(state, "\n--- AI 决策：打出旋风斩 ---\n");
                     PlayerActions::playCard(state, whirlwind, nullptr);
                     state.isMonsterDead = true;
                 }

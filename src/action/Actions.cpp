@@ -3,21 +3,86 @@
 #include "src/character/Character.h"
 #include "src/gamestate/GameState.h"
 #include "src/event/EventBus.h"
+#include "src/utils/Logger.h"
 #include <iostream>
 
 // ==========================================
+// DummyAction 实现
+// ==========================================
+bool DummyAction::update(GameState& state) {
+    STS_LOG(state, "    [动作队列执行] -> " << name << "\n");
+    return true;
+}
+
+// ==========================================
 // DamageAction 实现
+// 
+// 设计原则：Action 负责日志和事件
+// - Character::calculateFinalDamage 纯计算（可用于预测）
+// - Character::reduceHealthAndBlock 执行扣血
+// - DamageAction 负责日志输出和事件发布
 // ==========================================
 DamageAction::DamageAction(std::shared_ptr<Character> t, int a) 
     : target(t), amount(a) {}
 
 bool DamageAction::update(GameState& state) {
     if (!target->isDead()) {
-        target->damage(amount);
-        // 触发受到伤害事件
+        // 1. 调用目标的计算接口，获取最终伤害
+        int final_damage = target->calculateFinalDamage(amount);
+        
+        // 2. 如果伤害被状态影响，输出调试信息
+        if (final_damage != amount) {
+            ENGINE_TRACE("伤害计算: " << amount << " -> " << final_damage 
+                         << " (受状态效果影响)");
+        }
+        
+        // 3. 执行最终的扣血
+        target->reduceHealthAndBlock(final_damage);
+        
+        // 4. 输出日志
+        STS_LOG(state, target->name << " 受到了 " << final_damage 
+                  << " 点伤害，剩余血量: " << target->current_hp 
+                  << ", 剩余格挡: " << target->block << "\n");
+        
+        // 5. 发布事件
         state.eventBus.publish(EventType::ON_DAMAGE_TAKEN, state, target.get());
     }
-    return true; // 立即完成
+    return true;
+}
+
+// ==========================================
+// GainBlockAction 实现
+// 
+// 设计原则：Action 负责日志和事件
+// - Character::calculateFinalBlock 纯计算（可用于预测）
+// - Character::addBlockFinal 执行获得格挡
+// - GainBlockAction 负责日志输出和事件发布
+// ==========================================
+GainBlockAction::GainBlockAction(std::shared_ptr<Character> t, int a) 
+    : target(t), amount(a) {}
+
+bool GainBlockAction::update(GameState& state) {
+    if (!target->isDead()) {
+        // 1. 调用计算接口，获取最终格挡
+        int final_block = target->calculateFinalBlock(amount);
+        
+        // 2. 如果格挡被状态影响，输出调试信息
+        if (final_block != amount) {
+            ENGINE_TRACE("格挡计算: " << amount << " -> " << final_block 
+                         << " (受状态效果影响)");
+        }
+        
+        // 3. 执行获得格挡
+        target->addBlockFinal(final_block);
+        
+        // 4. 输出日志
+        STS_LOG(state, target->name << " 获得了 " << final_block 
+                  << " 点格挡，当前格挡: " << target->block << "\n");
+        
+        // 5. 发布事件（如果需要）
+        // state.eventBus.publish(EventType::ON_BLOCK_GAINED, state, target.get());
+    }
+    return true;
 }
 
 // ==========================================
@@ -35,21 +100,19 @@ ApplyPowerAction::ApplyPowerAction(std::shared_ptr<Character> src,
 
 bool ApplyPowerAction::update(GameState& state) {
     if (!target->isDead()) {
-        // 判断是否需要保护罩
-        // 条件：怪物回合 (!isPlayerTurn) 且释放者是怪物
         bool isMonsterSource = (source != state.player);
         if (!state.isPlayerTurn && isMonsterSource) {
             power->justApplied = true;
-            std::cout << "-> [保护罩] " << power->name << " 刚挂上，本轮次不掉层\n";
+            ENGINE_TRACE("保护罩激活: " << power->name << " 刚挂上，本轮次不掉层");
         } else {
             power->justApplied = false;
         }
         
-        std::cout << "-> 给 " << target->name << " 施加了 " << power->amount 
-                  << " 层 [" << power->name << "]\n";
+        STS_LOG(state, "-> 给 " << target->name << " 施加了 " << power->amount 
+                  << " 层 [" << power->name << "]\n");
         power->owner = target;
         target->powers.push_back(power);
-        power->onApply(state); // 触发状态自带的初始化/事件注册逻辑
+        power->onApply(state);
     }
     return true;
 }
@@ -64,11 +127,11 @@ ReducePowerAction::ReducePowerAction(std::shared_ptr<Character> t,
 bool ReducePowerAction::update(GameState& state) {
     if (power && power->amount > 0) {
         power->amount -= reduceAmount;
-        std::cout << "-> " << target->name << " 的 [" << power->name 
+        STS_LOG(state, "-> " << target->name << " 的 [" << power->name 
                   << "] 减少了 " << reduceAmount << " 层，剩余 " 
-                  << power->amount << " 层。\n";
+                  << power->amount << " 层。\n");
         if (power->amount <= 0) {
-            std::cout << "-> [" << power->name << "] 已完全消散。\n";
+            STS_LOG(state, "-> [" << power->name << "] 已完全消散。\n");
         }
     }
     return true;

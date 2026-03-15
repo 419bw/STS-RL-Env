@@ -1,5 +1,6 @@
 #include "CombatFlow.h"
 #include "src/gamestate/GameState.h"
+#include "src/utils/Logger.h"
 #include <iostream>
 
 // ==========================================
@@ -33,14 +34,14 @@ void CombatFlow::tick(GameState& state) {
     // 绝对不出现具体的 Action 类！
     switch (currentState) {
         case CombatState::BATTLE_START:
-            std::cout << "\n=== [PHASE] 战斗开始 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 战斗开始 ===\n");
             state.eventBus.publish(EventType::PHASE_BATTLE_START, state);
             currentState = CombatState::ROUND_START;
             break;
 
         case CombatState::ROUND_START:
             state.turnCount++;
-            std::cout << "\n=== [PHASE] 第 " << state.turnCount << " 轮次开始 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 第 " << state.turnCount << " 轮次开始 ===\n");
             state.eventBus.publish(EventType::PHASE_ROUND_START, state);
             currentState = CombatState::PLAYER_TURN_START;
             break;
@@ -49,7 +50,7 @@ void CombatFlow::tick(GameState& state) {
             state.player->energy = 3;
             state.player->block = 0;
             state.isPlayerTurn = true;  // 拨动时间开关：玩家回合开始
-            std::cout << "\n=== [PHASE] 玩家回合开始 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 玩家回合开始 ===\n");
             
             state.eventBus.publish(EventType::PHASE_PLAYER_TURN_START, state);
             state.eventBus.publish(EventType::ON_TURN_START, state, state.player.get());
@@ -63,7 +64,7 @@ void CombatFlow::tick(GameState& state) {
 
         case CombatState::PLAYER_TURN_END:
             state.isPlayerTurn = false;  // 拨动时间开关：玩家回合结束
-            std::cout << "\n=== [PHASE] 玩家回合结束 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 玩家回合结束 ===\n");
             
             state.eventBus.publish(EventType::PHASE_PLAYER_TURN_END, state);
             state.eventBus.publish(EventType::ON_TURN_END, state, state.player.get());
@@ -72,7 +73,7 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::MONSTER_TURN_START:
-            std::cout << "\n=== [PHASE] 怪物回合开始 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 怪物回合开始 ===\n");
             
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN_START, state);
             
@@ -86,7 +87,7 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::MONSTER_TURN:
-            std::cout << "\n=== [PHASE] 怪物行动 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 怪物行动 ===\n");
             
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN, state);
             
@@ -94,7 +95,7 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::MONSTER_TURN_END:
-            std::cout << "\n=== [PHASE] 怪物回合结束 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 怪物回合结束 ===\n");
             
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN_END, state);
             
@@ -108,7 +109,7 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::ROUND_END:
-            std::cout << "\n=== [PHASE] 轮次结束 (结算状态效果) ===\n";
+            STS_LOG(state, "\n=== [PHASE] 轮次结束 (结算状态效果) ===\n");
             
             state.eventBus.publish(EventType::PHASE_ROUND_END, state);
             state.eventBus.publish(EventType::ON_ROUND_END, state);
@@ -120,13 +121,13 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::BATTLE_END:
-            std::cout << "\n=== [PHASE] 战斗结束 ===\n";
+            STS_LOG(state, "\n=== [PHASE] 战斗结束 ===\n");
             state.eventBus.publish(EventType::PHASE_BATTLE_END, state);
             
             if (state.isPlayerDead) {
-                std::cout << ">>> 游戏失败 (GAME OVER) <<<\n";
+                STS_LOG(state, ">>> 游戏失败 (GAME OVER) <<<\n");
             } else if (state.isMonsterDead) {
-                std::cout << ">>> 战斗胜利！结算金币和卡牌奖励... <<<\n";
+                STS_LOG(state, ">>> 战斗胜利！结算金币和卡牌奖励... <<<\n");
             }
             break;
     }
