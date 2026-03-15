@@ -70,11 +70,17 @@ void PoisonPower::onApply(GameState& state) {
             }
             
             Character* current_turn_char = static_cast<Character*>(context);
-            if (current_turn_char == self->owner.get() && self->amount > 0) {
-                ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
-                
-                gs.addAction(std::make_unique<DamageAction>(self->owner, self->amount));
-                gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
+            if (current_turn_char == self->owner.get()) {
+                // 按照官方逻辑：
+                // - 如果层数为 0，直接移除
+                // - 否则，造成伤害并减少 1 层
+                if (self->amount == 0) {
+                    gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
+                } else {
+                    ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
+                    gs.addAction(std::make_unique<DamageAction>(self->owner, self->amount));
+                    gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
+                }
             }
             return true;
         });

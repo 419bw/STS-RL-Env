@@ -35,7 +35,7 @@ int main() {
     bool wantsToEndTurn = false;
     int lastTurnCount = 0;
 
-    for (int step = 0; step < 100; ++step) {
+    for (int step = 0; step < 150; ++step) {
         flow.tick(state);
         
         if (state.turnCount != lastTurnCount) {
