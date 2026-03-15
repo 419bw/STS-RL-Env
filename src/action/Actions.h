@@ -17,12 +17,17 @@ public:
 
 // ==========================================
 // 具体动作：伤害动作 (Damage Action)
+// 
+// 数据驱动原则：
+// - 必须携带溯源信息（source: 伤害来源）
+// - Action 负责将 source 传递给计算层
 // ==========================================
 class DamageAction : public AbstractAction {
-    std::shared_ptr<Character> target;
+    std::shared_ptr<Character> source;  // 伤害来源（攻击者）
+    std::shared_ptr<Character> target;  // 伤害目标
     int amount;
 public:
-    DamageAction(std::shared_ptr<Character> t, int a);
+    DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a);
     bool update(GameState& state) override;
 };
 

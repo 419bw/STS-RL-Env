@@ -18,18 +18,20 @@ bool DummyAction::update(GameState& state) {
 // ==========================================
 // DamageAction 实现
 // 
-// 设计原则：Action 负责日志和事件
+// 数据驱动原则：
+// - 必须携带溯源信息（source: 伤害来源）
+// - Action 负责将 source 传递给计算层
 // - Character::calculateFinalDamage 纯计算（可用于预测）
 // - Character::reduceHealthAndBlock 执行扣血
 // - DamageAction 负责日志输出和事件发布
 // ==========================================
-DamageAction::DamageAction(std::shared_ptr<Character> t, int a) 
-    : target(t), amount(a) {}
+DamageAction::DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a) 
+    : source(src), target(tgt), amount(a) {}
 
 bool DamageAction::update(GameState& state) {
     if (!target->isDead()) {
-        // 1. 调用目标的计算接口，获取最终伤害
-        int final_damage = target->calculateFinalDamage(amount);
+        // 1. 调用目标的计算接口，传递 source 进行跨实体状态结算
+        int final_damage = target->calculateFinalDamage(amount, source.get());
         
         // 2. 如果伤害被状态影响，输出调试信息
         if (final_damage != amount) {

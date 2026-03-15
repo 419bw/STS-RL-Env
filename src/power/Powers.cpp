@@ -9,18 +9,35 @@
 // ==========================================
 // VulnerablePower 实现
 // 
-// 特性：轮次结束时掉层，有保护罩机制
+// 数据驱动原则：
+// - Power 是纯粹的无状态计算器
+// - 只读取参与双方的面板属性
+// - 不关心属性是怎么来的
+// - 不跨层级访问全局游戏状态
+// - 不硬编码特定遗物名称
 // ==========================================
 
-float VulnerablePower::modifyDamageTaken(float damage) {
+float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
     // 层数为 0 时不再生效
     if (amount <= 0) {
         return damage;
     }
     
-    float final_damage = damage * 1.5f;
+    float multiplier = 1.5f; 
+
+    // 1. 如果攻击方有特化面板（比如纸蛙 1.75），用攻击方的
+    if (source && source->vulnerableDamageDealtMultiplier != 1.5f) {
+        multiplier = source->vulnerableDamageDealtMultiplier;
+    }
+    
+    // 2. 如果受击方有特化面板（比如蘑菇 1.25），用受击方的
+    if (owner && owner->vulnerableDamageReceivedMultiplier != 1.5f) {
+        multiplier = owner->vulnerableDamageReceivedMultiplier;
+    }
+    
+    float final_damage = damage * multiplier;
     ENGINE_TRACE("[" << name << "] 伤害修饰: " << damage << " -> " << final_damage 
-                 << " (+" << (final_damage - damage) << ", 50%易伤)");
+                 << " (x" << multiplier << " 倍率)");
     return final_damage;
 }
 
@@ -57,7 +74,9 @@ void VulnerablePower::onApply(GameState& state) {
 // ==========================================
 // PoisonPower 实现
 // 
-// 特性：回合开始时受到伤害并掉层
+// 数据驱动原则：
+// - 中毒伤害不需要跨实体状态结算
+// - 但仍需传递 source（nullptr）以保持接口一致性
 // ==========================================
 void PoisonPower::onApply(GameState& state) {
     std::weak_ptr<AbstractPower> weakSelf = shared_from_this();
@@ -78,7 +97,8 @@ void PoisonPower::onApply(GameState& state) {
                     gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
                 } else {
                     ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
-                    gs.addAction(std::make_unique<DamageAction>(self->owner, self->amount));
+                    // 中毒伤害没有来源，传 nullptr
+                    gs.addAction(std::make_unique<DamageAction>(nullptr, self->owner, self->amount));
                     gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
                 }
             }

@@ -4,9 +4,10 @@
 // ==========================================
 // Character 实现
 // 
-// 设计原则：纯数据 + 纯计算
+// 设计原则：纯数据 + 纯计算 + 数据总线
 // - 不输出日志（由 Action 负责）
 // - 不发布事件（由 Action 负责）
+// - 所有遗物/被动带来的乘区修正固化为面板属性
 // ==========================================
 
 // ==========================================
@@ -14,11 +15,14 @@
 // 可用于 AI 预测、UI 显示等场景
 // ==========================================
 
-int Character::calculateFinalDamage(int base_damage) const {
+int Character::calculateFinalDamage(int base_damage, Character* source) const {
     float final_dmg = static_cast<float>(base_damage);
+    
+    // 遍历所有 Power，传递 source 进行跨实体状态结算
     for (const auto& power : powers) {
-        final_dmg = power->modifyDamageTaken(final_dmg);
+        final_dmg = power->modifyDamageTaken(final_dmg, source);
     }
+    
     return static_cast<int>(final_dmg);
 }
 

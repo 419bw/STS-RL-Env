@@ -9,6 +9,10 @@
 
 // ==========================================
 // StrikeCard 实现
+// 
+// 数据驱动原则：
+// - 卡牌使用时必须传递 source（玩家）给 DamageAction
+// - 这样 Power 才能读取攻击者的面板属性
 // ==========================================
 void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 打击 附带挂易伤特效!\n");
@@ -16,7 +20,8 @@ void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
     state.addAction(std::make_unique<ApplyPowerAction>(
         state.player, target, std::make_shared<VulnerablePower>(1)));
     
-    state.addAction(std::make_unique<DamageAction>(target, 6));
+    // 传递 source（玩家）给 DamageAction
+    state.addAction(std::make_unique<DamageAction>(state.player, target, 6));
 }
 
 // ==========================================
@@ -30,6 +35,9 @@ void DeadlyPoisonCard::use(GameState& state, std::shared_ptr<Character> target) 
 
 // ==========================================
 // WhirlwindCard 实现
+// 
+// 数据驱动原则：
+// - 旋风斩的 source 是玩家
 // ==========================================
 void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 旋风斩! 消耗了 " 
@@ -39,7 +47,8 @@ void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
     for (int i = 0; i < energyOnUse; i++) {
         for (auto& monster : state.monsters) {
             if (!monster->isDead()) {
-                state.addAction(std::make_unique<DamageAction>(monster, 5));
+                // 传递 source（玩家）给 DamageAction
+                state.addAction(std::make_unique<DamageAction>(state.player, monster, 5));
             }
         }
     }

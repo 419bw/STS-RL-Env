@@ -7,6 +7,12 @@
 
 // ==========================================
 // 状态效果基类 (Power System)
+// 
+// 设计原则：Power 是纯粹的无状态计算器
+// - 只读取参与双方的面板属性
+// - 不关心属性是怎么来的
+// - 不跨层级访问全局游戏状态
+// - 不硬编码特定遗物名称
 // ==========================================
 
 class AbstractPower : public std::enable_shared_from_this<AbstractPower> {
@@ -31,8 +37,23 @@ public:
     // 状态移除时触发，用于清理（如取消事件订阅）
     virtual void onRemove(GameState& state) {}
     
-    // 供数值修饰型状态重写
-    virtual float modifyDamageTaken(float damage) { return damage; }
-    virtual float modifyDamageDealt(float damage) { return damage; }
-    virtual float modifyBlockGained(float block) { return block; }
+    // ==========================================
+    // 数值修饰接口（数据驱动）
+    // source: 伤害来源（攻击者），用于跨实体状态结算
+    // ==========================================
+    
+    // 修改承受的伤害（如易伤）
+    virtual float modifyDamageTaken(float damage, Character* source = nullptr) { 
+        return damage; 
+    }
+    
+    // 修改造成的伤害（如虚弱）
+    virtual float modifyDamageDealt(float damage, Character* target = nullptr) { 
+        return damage; 
+    }
+    
+    // 修改获得的格挡（如敏捷）
+    virtual float modifyBlockGained(float block) { 
+        return block; 
+    }
 };
