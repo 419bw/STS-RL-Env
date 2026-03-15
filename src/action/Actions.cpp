@@ -22,12 +22,29 @@ bool DamageAction::update(GameState& state) {
 
 // ==========================================
 // ApplyPowerAction 实现
+// 
+// 保护罩逻辑：
+// 1. 查阅黑板发现 !state.isPlayerTurn (玩家回合已结束)
+// 2. 且释放者是怪物 (source != player)
+// 3. 如果满足，设置 justApplied = true，防止本轮次掉层
 // ==========================================
-ApplyPowerAction::ApplyPowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p) 
-    : target(t), power(p) {}
+ApplyPowerAction::ApplyPowerAction(std::shared_ptr<Character> src, 
+                                     std::shared_ptr<Character> tgt, 
+                                     std::shared_ptr<AbstractPower> p) 
+    : source(src), target(tgt), power(p) {}
 
 bool ApplyPowerAction::update(GameState& state) {
     if (!target->isDead()) {
+        // 判断是否需要保护罩
+        // 条件：怪物回合 (!isPlayerTurn) 且释放者是怪物
+        bool isMonsterSource = (source != state.player);
+        if (!state.isPlayerTurn && isMonsterSource) {
+            power->justApplied = true;
+            std::cout << "-> [保护罩] " << power->name << " 刚挂上，本轮次不掉层\n";
+        } else {
+            power->justApplied = false;
+        }
+        
         std::cout << "-> 给 " << target->name << " 施加了 " << power->amount 
                   << " 层 [" << power->name << "]\n";
         power->owner = target;

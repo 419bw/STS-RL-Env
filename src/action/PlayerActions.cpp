@@ -47,7 +47,7 @@ bool PlayerActions::playCard(GameState& state,
 void PlayerActions::endTurn(GameState& state, CombatFlow& flow) {
     if (flow.currentState == CombatState::PLAYER_ACTION && state.actionQueue.empty()) {
         std::cout << "[外部输入] -> 玩家点击了【结束回合】\n";
-        flow.currentState = CombatState::TURN_END;
+        flow.currentState = CombatState::PLAYER_TURN_END;
     } else {
         std::cout << "[警告] 当前状态不允许结束回合，或动作尚未结算完毕！\n";
     }

@@ -16,8 +16,13 @@ public:
     PowerType type;
     std::shared_ptr<Character> owner;
 
+    // 微观首回合保护罩：防止刚挂上的状态被轮次结束判定"误杀"
+    // true = 刚挂上，本轮次不掉层
+    // false = 正常状态，轮次结束时正常掉层
+    bool justApplied;
+
     AbstractPower(std::string n, int a, PowerType t) 
-        : name(n), amount(a), type(t) {}
+        : name(n), amount(a), type(t), justApplied(false) {}
     virtual ~AbstractPower() = default;
 
     // 状态挂载时触发，用于注册事件

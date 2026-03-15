@@ -13,9 +13,9 @@ void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
     // 先挂易伤，再打伤害，演示动作队列的顺序性
     std::cout << "打出了 打击(Strike) 附带挂易伤特效!\n";
     
-    // 动作1：施加易伤 (进队列)
+    // 动作1：施加易伤 (玩家释放)
     state.addAction(std::make_unique<ApplyPowerAction>(
-        target, std::make_shared<VulnerablePower>(1)));
+        state.player, target, std::make_shared<VulnerablePower>(1)));
     
     // 动作2：造成伤害 (进队列，排在施加易伤之后)
     state.addAction(std::make_unique<DamageAction>(target, 6));
@@ -27,7 +27,7 @@ void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
 void DeadlyPoisonCard::use(GameState& state, std::shared_ptr<Character> target) {
     std::cout << "打出了 致命毒药(Deadly Poison)!\n";
     state.addAction(std::make_unique<ApplyPowerAction>(
-        target, std::make_shared<PoisonPower>(5)));
+        state.player, target, std::make_shared<PoisonPower>(5)));
 }
 
 // ==========================================

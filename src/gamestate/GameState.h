@@ -24,6 +24,9 @@ public:
     bool isPlayerDead;
     bool isMonsterDead;
 
+    // 宏观时间开关：记录当前是玩家回合还是怪物回合
+    bool isPlayerTurn;
+
     // 游戏实体
     std::shared_ptr<Player> player;
     std::vector<std::shared_ptr<Monster>> monsters;
@@ -42,7 +45,8 @@ public:
     GameState() 
         : turnCount(0),
           isPlayerDead(false),
-          isMonsterDead(false) {
+          isMonsterDead(false),
+          isPlayerTurn(false) {
         player = std::make_shared<Player>("战士", 80);
     }
 

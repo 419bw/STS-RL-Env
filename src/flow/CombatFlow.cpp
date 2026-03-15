@@ -34,49 +34,39 @@ void CombatFlow::tick(GameState& state) {
     switch (currentState) {
         case CombatState::BATTLE_START:
             std::cout << "\n=== [PHASE] 战斗开始 ===\n";
-            // 仅仅发布事件，不创建任何具体 Action
             state.eventBus.publish(EventType::PHASE_BATTLE_START, state);
-            currentState = CombatState::TURN_START;
+            currentState = CombatState::ROUND_START;
             break;
 
-        case CombatState::TURN_START:
+        case CombatState::ROUND_START:
             state.turnCount++;
+            std::cout << "\n=== [PHASE] 第 " << state.turnCount << " 轮次开始 ===\n";
+            state.eventBus.publish(EventType::PHASE_ROUND_START, state);
+            currentState = CombatState::PLAYER_TURN_START;
+            break;
+
+        case CombatState::PLAYER_TURN_START:
             state.player->energy = 3;
             state.player->block = 0;
-            std::cout << "\n=== [PHASE] 第 " << state.turnCount << " 回合开始 ===\n";
+            state.isPlayerTurn = true;  // 拨动时间开关：玩家回合开始
+            std::cout << "\n=== [PHASE] 玩家回合开始 ===\n";
             
-            // 发布宏观阶段事件
-            state.eventBus.publish(EventType::PHASE_TURN_START, state);
-            
-            // 发布角色级别的回合开始事件 (玩家 + 所有怪物)
+            state.eventBus.publish(EventType::PHASE_PLAYER_TURN_START, state);
             state.eventBus.publish(EventType::ON_TURN_START, state, state.player.get());
-            for (auto& monster : state.monsters) {
-                if (!monster->isDead()) {
-                    state.eventBus.publish(EventType::ON_TURN_START, state, monster.get());
-                }
-            }
             
             currentState = CombatState::PLAYER_ACTION;
             break;
 
         case CombatState::PLAYER_ACTION:
             // 引擎在此挂起，等待外部输入 (AI/玩家)
-            // 不发布任何事件，只是空转
             break;
 
-        case CombatState::TURN_END:
+        case CombatState::PLAYER_TURN_END:
+            state.isPlayerTurn = false;  // 拨动时间开关：玩家回合结束
             std::cout << "\n=== [PHASE] 玩家回合结束 ===\n";
             
-            // 发布宏观阶段事件
-            state.eventBus.publish(EventType::PHASE_TURN_END, state);
-            
-            // 发布角色级别的回合结束事件
+            state.eventBus.publish(EventType::PHASE_PLAYER_TURN_END, state);
             state.eventBus.publish(EventType::ON_TURN_END, state, state.player.get());
-            for (auto& monster : state.monsters) {
-                if (!monster->isDead()) {
-                    state.eventBus.publish(EventType::ON_TURN_END, state, monster.get());
-                }
-            }
             
             currentState = CombatState::MONSTER_TURN_START;
             break;
@@ -84,10 +74,8 @@ void CombatFlow::tick(GameState& state) {
         case CombatState::MONSTER_TURN_START:
             std::cout << "\n=== [PHASE] 怪物回合开始 ===\n";
             
-            // 发布宏观阶段事件
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN_START, state);
             
-            // 发布怪物回合开始事件 (所有怪物)
             for (auto& monster : state.monsters) {
                 if (!monster->isDead()) {
                     state.eventBus.publish(EventType::ON_TURN_START, state, monster.get());
@@ -100,7 +88,6 @@ void CombatFlow::tick(GameState& state) {
         case CombatState::MONSTER_TURN:
             std::cout << "\n=== [PHASE] 怪物行动 ===\n";
             
-            // 发布宏观阶段事件
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN, state);
             
             currentState = CombatState::MONSTER_TURN_END;
@@ -109,17 +96,27 @@ void CombatFlow::tick(GameState& state) {
         case CombatState::MONSTER_TURN_END:
             std::cout << "\n=== [PHASE] 怪物回合结束 ===\n";
             
-            // 发布宏观阶段事件
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN_END, state);
             
-            // 发布怪物回合结束事件 (所有怪物)
             for (auto& monster : state.monsters) {
                 if (!monster->isDead()) {
                     state.eventBus.publish(EventType::ON_TURN_END, state, monster.get());
                 }
             }
             
-            currentState = CombatState::TURN_START;
+            currentState = CombatState::ROUND_END;
+            break;
+
+        case CombatState::ROUND_END:
+            std::cout << "\n=== [PHASE] 轮次结束 (结算状态效果) ===\n";
+            
+            state.eventBus.publish(EventType::PHASE_ROUND_END, state);
+            state.eventBus.publish(EventType::ON_ROUND_END, state);
+            
+            checkBattleEndCondition(state);
+            if (currentState != CombatState::BATTLE_END) {
+                currentState = CombatState::ROUND_START;
+            }
             break;
 
         case CombatState::BATTLE_END:
