@@ -1,0 +1,35 @@
+# 编译输出
+build/
+*.exe
+*.o
+*.obj
+*.a
+*.lib
+
+# IDE 和编辑器
+.vscode/
+.idea/
+*.suo
+*.user
+*.sln.docstates
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# 输出文件
+output.txt
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# 其他
+*.log
+*.tmp
+*.jar
+
+# 废弃文件
+base(no use)/
