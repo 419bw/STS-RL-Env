@@ -18,27 +18,23 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
     }
     
     // 2. 怪物死亡判定（逐个检查，播报每个怪物的死亡）
+    bool allMonstersDead = true;
     for (auto& monster : state.monsters) {
-        if (monster->isDead() && !monster->deathReported) {
-            STS_LOG(state, "\n>>> [死亡] " << monster->name << " 被击败！ <<<\n");
-            monster->deathReported = true;  // 标记已播报，避免重复
-            ENGINE_TRACE("[SBA] " << monster->name << " 已死亡！");
+        if (monster->isDead()) {
+            // 播报死亡（只播报一次）
+            if (!monster->deathReported) {
+                STS_LOG(state, "\n>>> [死亡] " << monster->name << " 被击败！ <<<\n");
+                monster->deathReported = true;
+                ENGINE_TRACE("[SBA] " << monster->name << " 已死亡！");
+            }
+        } else {
+            allMonstersDead = false;
         }
     }
     
-    // 3. 检查是否所有怪物都死亡
-    if (!state.isMonsterDead) {
-        bool allMonstersDead = true;
-        for (const auto& monster : state.monsters) {
-            if (!monster->isDead()) {
-                allMonstersDead = false;
-                break;
-            }
-        }
-        if (allMonstersDead) {
-            state.isMonsterDead = true;
-            ENGINE_TRACE("[SBA] 所有怪物已死亡！");
-        }
+    // 3. 更新全局状态
+    if (allMonstersDead && !state.isMonsterDead) {
+        state.isMonsterDead = true;
     }
     
     // 4. 未来可扩展：其他状态触发
