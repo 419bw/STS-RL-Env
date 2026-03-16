@@ -38,7 +38,7 @@ int main() {
     int lastTurnCount = 0;
     int cardsPlayedThisTurn = 0;
 
-    for (int step = 0; step < 200; ++step) {
+    for (int step = 0; step < 50; ++step) {
         flow.tick(state);
         
         // 新回合开始时重置计数

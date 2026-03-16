@@ -11,19 +11,6 @@
 #include "src/card/AbstractCard.h"
 
 // ==========================================
-// CardSelectionContext - 选牌上下文结构体
-// 
-// 封装所有选牌相关状态，使用 optional 管理
-// 专供 RL 环境的 Observation 读取
-// ==========================================
-struct CardSelectionContext {
-    std::vector<std::shared_ptr<AbstractCard>> choices;  // 供 AI 选择的牌库快照
-    SelectionPurpose purpose;                            // 选完之后用来干嘛
-    int minSelection = 1;                                // 最少选几张
-    int maxSelection = 1;                                // 最多选几张
-};
-
-// ==========================================
 // GameState - 纯数据容器 (Anemic Domain Model)
 // 
 // 铁律一：GameState 必须是纯数据容器

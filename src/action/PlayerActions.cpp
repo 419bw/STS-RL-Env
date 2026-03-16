@@ -2,6 +2,7 @@
 #include "src/gamestate/GameState.h"
 #include "src/flow/CombatFlow.h"
 #include "src/action/Actions.h"
+#include "src/card/AbstractCard.h"
 #include "src/system/ActionSystem.h"
 #include "src/utils/Logger.h"
 #include <iostream>

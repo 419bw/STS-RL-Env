@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 // ==========================================
 // 核心枚举类型 (Enums)
 // ==========================================
@@ -83,4 +86,21 @@ enum class SelectionPurpose {
     MOVE_TO_HAND,           // 选一张放入手牌 (如: 全息影像、寻求)
     DISCARD_FROM_HAND       // 从手牌选一张丢弃 (如: 绝境求生)
     // [未来扩展预留位置]
+};
+
+// ==========================================
+// 选牌上下文结构体 (Card Selection Context)
+// 
+// 封装所有选牌相关状态，使用 optional 管理
+// 专供 RL 环境的 Observation 读取
+// 
+// 区间控制示例：
+// - "必须选1张" -> minSelection=1, maxSelection=1
+// - "最多选2张" -> minSelection=0, maxSelection=2
+// ==========================================
+struct CardSelectionContext {
+    std::vector<std::shared_ptr<class AbstractCard>> choices;  // 供 AI 选择的牌库快照
+    SelectionPurpose purpose;                                  // 选完之后用来干嘛
+    int minSelection = 1;                                      // 最少选几张
+    int maxSelection = 1;                                      // 最多选几张
 };

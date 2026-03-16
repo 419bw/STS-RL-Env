@@ -3,6 +3,7 @@
 #include "src/character/Character.h"
 #include "src/gamestate/GameState.h"
 #include "src/event/EventBus.h"
+#include "src/card/AbstractCard.h"
 #include "src/utils/Logger.h"
 #include <iostream>
 #include <algorithm>
