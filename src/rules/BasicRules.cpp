@@ -10,32 +10,38 @@
 // 回调返回值：
 // - true：继续监听（规则是永久的）
 // - false：移除监听者
+// 
+// 原版规则：
+// - 战斗开始：洗牌，不抽牌
+// - 玩家回合开始：抽 5 张牌
+// - 玩家回合结束：弃置所有手牌
+// 
+// 铁律：所有操作必须通过 Action 队列执行
 // ==========================================
 
 void BasicRules::registerRules(GameState& state) {
     
-    // 规则 1：战斗开始时 - 洗牌并抽 5 张初始手牌
+    // 规则 1：战斗开始时 - 只洗牌，不抽牌（原版行为）
     state.eventBus.subscribe(EventType::PHASE_BATTLE_START, 
         [](GameState& gs, void*) -> bool {
-            STS_LOG(gs, "    [BasicRules] 战斗开始 -> 洗牌 + 抽 5 张初始手牌\n");
-            gs.actionQueue.push_back(std::make_unique<DummyAction>("洗牌入抽牌堆"));
-            gs.actionQueue.push_back(std::make_unique<DummyAction>("抽取 5 张初始手牌"));
+            STS_LOG(gs, "    [BasicRules] 战斗开始 -> 洗牌\n");
+            gs.addAction(std::make_unique<ShuffleDiscardIntoDrawAction>());
             return true;
         });
 
-    // 规则 2：玩家回合开始时 - 抽 1 张牌
+    // 规则 2：玩家回合开始时 - 抽 5 张牌（原版行为）
     state.eventBus.subscribe(EventType::PHASE_PLAYER_TURN_START, 
         [](GameState& gs, void*) -> bool {
-            STS_LOG(gs, "    [BasicRules] 玩家回合开始 -> 抽 1 张牌\n");
-            gs.actionQueue.push_back(std::make_unique<DummyAction>("抽取 1 张牌"));
+            STS_LOG(gs, "    [BasicRules] 玩家回合开始 -> 抽 5 张牌\n");
+            gs.addAction(std::make_unique<DrawCardsAction>(5));
             return true;
         });
 
-    // 规则 3：玩家回合结束时 - 弃置手牌
+    // 规则 3：玩家回合结束时 - 弃置所有手牌
     state.eventBus.subscribe(EventType::PHASE_PLAYER_TURN_END, 
         [](GameState& gs, void*) -> bool {
             STS_LOG(gs, "    [BasicRules] 玩家回合结束 -> 弃置所有手牌\n");
-            gs.actionQueue.push_back(std::make_unique<DummyAction>("弃置所有手牌"));
+            gs.addAction(std::make_unique<DiscardHandAction>());
             return true;
         });
 

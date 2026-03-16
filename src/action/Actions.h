@@ -207,3 +207,29 @@ public:
 
     bool update(GameState& state) override;
 };
+
+// ==========================================
+// 具体动作：洗牌动作 (Shuffle Discard Into Draw Action)
+// 
+// 将弃牌堆洗入抽牌堆
+// 使用隔离 RNG 保证确定性
+// ==========================================
+class ShuffleDiscardIntoDrawAction : public AbstractAction {
+public:
+    ShuffleDiscardIntoDrawAction() = default;
+
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：弃掉所有手牌动作 (Discard Hand Action)
+// 
+// 将所有手牌移入弃牌堆
+// 用于回合结束时
+// ==========================================
+class DiscardHandAction : public AbstractAction {
+public:
+    DiscardHandAction() = default;
+
+    bool update(GameState& state) override;
+};

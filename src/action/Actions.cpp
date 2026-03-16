@@ -320,7 +320,7 @@ bool UseCardAction::update(GameState& state) {
     } else {
         // 普通牌：进入弃牌堆
         state.discardPile.push_back(targetCard);
-        state.eventBus.publish(EventType::ON_CARD_DISCARDED, state, targetCard.get());
+        //state.eventBus.publish(EventType::ON_CARD_DISCARDED, state, targetCard.get());
     }
 
     return true;
@@ -333,5 +333,25 @@ bool UseCardAction::update(GameState& state) {
 // ==========================================
 bool DrawCardsAction::update(GameState& state) {
     DeckSystem::drawCards(state, amount);
+    return true;
+}
+
+// ==========================================
+// ShuffleDiscardIntoDrawAction 实现
+// 
+// 委托给 DeckSystem
+// ==========================================
+bool ShuffleDiscardIntoDrawAction::update(GameState& state) {
+    DeckSystem::shuffleDiscardIntoDraw(state);
+    return true;
+}
+
+// ==========================================
+// DiscardHandAction 实现
+// 
+// 委托给 DeckSystem
+// ==========================================
+bool DiscardHandAction::update(GameState& state) {
+    DeckSystem::discardHand(state);
     return true;
 }

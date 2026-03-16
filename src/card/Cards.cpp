@@ -15,13 +15,14 @@
 // - 这样 Power 才能读取攻击者的面板属性
 // ==========================================
 void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
-    STS_LOG(state, "打出了 打击 附带挂易伤特效!\n");
+    STS_LOG(state, "打出了 打击!\n");
     
-    state.addAction(std::make_unique<ApplyPowerAction>(
-        state.player, target, std::make_shared<VulnerablePower>(1)));
-    
-    // 传递 source（玩家）给 DamageAction
-    state.addAction(std::make_unique<DamageAction>(state.player, target, 6));
+    if (target) {
+        state.addAction(std::make_unique<ApplyPowerAction>(
+            state.player, target, std::make_shared<VulnerablePower>(1)));
+        
+        state.addAction(std::make_unique<DamageAction>(state.player, target, 6));
+    }
 }
 
 // ==========================================
@@ -29,8 +30,11 @@ void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
 // ==========================================
 void DeadlyPoisonCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 致命毒药!\n");
-    state.addAction(std::make_unique<ApplyPowerAction>(
-        state.player, target, std::make_shared<PoisonPower>(5)));
+    
+    if (target) {
+        state.addAction(std::make_unique<ApplyPowerAction>(
+            state.player, target, std::make_shared<PoisonPower>(5)));
+    }
 }
 
 // ==========================================
@@ -38,6 +42,7 @@ void DeadlyPoisonCard::use(GameState& state, std::shared_ptr<Character> target) 
 // 
 // 数据驱动原则：
 // - 旋风斩的 source 是玩家
+// - 对所有存活的怪物造成伤害
 // ==========================================
 void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 旋风斩! 消耗了 " 
@@ -47,7 +52,6 @@ void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
     for (int i = 0; i < energyOnUse; i++) {
         for (auto& monster : state.monsters) {
             if (!monster->isDead()) {
-                // 传递 source（玩家）给 DamageAction
                 state.addAction(std::make_unique<DamageAction>(state.player, monster, 5));
             }
         }

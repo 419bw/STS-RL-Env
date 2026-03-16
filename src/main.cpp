@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <memory>
+#include <random>
 #include "src/gamestate/GameState.h"
 #include "src/flow/CombatFlow.h"
 #include "src/rules/BasicRules.h"
@@ -17,74 +18,99 @@
 int main() {
     GameState state;
     
-    // 多怪物测试：添加三个怪物
-    state.monsters.push_back(std::make_shared<Monster>("大嘴花", 30));
     state.monsters.push_back(std::make_shared<Monster>("史莱姆", 50));
-    state.monsters.push_back(std::make_shared<Monster>("哥布林", 40));
 
     CombatFlow flow;
 
     BasicRules::registerRules(state);
 
-    auto vajra = std::make_shared<CustomVajraRelic>();
-    vajra->onEquip(state, state.player.get());
-    
-    auto chemical_x = std::make_shared<ChemicalXRelic>();
-    chemical_x->onEquip(state, state.player.get());
-
-    auto strike = std::make_shared<StrikeCard>();
-    auto whirlwind = std::make_shared<WhirlwindCard>();
+    // ==========================================
+    // 初始化牌库：往弃牌堆塞入 11 张牌
+    // 测试洗牌、抽牌、爆牌逻辑
+    // ==========================================
+    STS_LOG(state, "\n=== [初始化] 往弃牌堆塞入 11 张牌 ===\n");
+    for (int i = 0; i < 6; ++i) {
+        state.discardPile.push_back(std::make_shared<StrikeCard>());
+    }
+    for (int i = 0; i < 3; ++i) {
+        state.discardPile.push_back(std::make_shared<DeadlyPoisonCard>());
+    }
+    for (int i = 0; i < 2; ++i) {
+        state.discardPile.push_back(std::make_shared<WhirlwindCard>());
+    }
+    STS_LOG(state, "[初始化] 弃牌堆: " << state.discardPile.size() << " 张\n");
+    STS_LOG(state, "[初始化] 抽牌堆: " << state.drawPile.size() << " 张\n");
+    STS_LOG(state, "[初始化] 手牌: " << state.hand.size() << " 张\n");
 
     int lastTurnCount = 0;
-    int cardsPlayedThisTurn = 0;
 
-    for (int step = 0; step < 50; ++step) {
+    for (int step = 0; step < 100; ++step) {
         flow.tick(state);
         
-        // 新回合开始时重置计数
         if (state.turnCount != lastTurnCount) {
-            cardsPlayedThisTurn = 0;
             lastTurnCount = state.turnCount;
+            STS_LOG(state, "\n=== [牌堆状态] 第 " << state.turnCount << " 回合 ===\n");
+            STS_LOG(state, "  抽牌堆: " << state.drawPile.size() << " 张\n");
+            STS_LOG(state, "  手牌: " << state.hand.size() << " 张\n");
+            STS_LOG(state, "  弃牌堆: " << state.discardPile.size() << " 张\n");
+            STS_LOG(state, "  消耗堆: " << state.exhaustPile.size() << " 张\n");
+            STS_LOG(state, "  滞留区: " << state.limbo.size() << " 张\n");
         }
         
-        // 使用 flow.currentState 和 state.currentPhase 双重检查
         if (flow.currentState == CombatState::PLAYER_ACTION && 
             state.currentPhase == StatePhase::PLAYING_CARD &&
             state.isActionQueueEmpty()) {
             
-            // 第一回合：对第一个怪物打出打击
-            if (state.turnCount == 1 && cardsPlayedThisTurn == 0) {
-                STS_LOG(state, "\n--- AI 决策：对大嘴花打出打击 ---\n");
-                PlayerActions::playCard(state, flow, strike, state.monsters[0]);
-                cardsPlayedThisTurn++;
-            }
-            // 第二回合：打出旋风斩（攻击所有怪物）
-            else if (state.turnCount == 2 && cardsPlayedThisTurn == 0) {
-                STS_LOG(state, "\n--- AI 决策：打出旋风斩（攻击所有怪物） ---\n");
-                PlayerActions::playCard(state, flow, whirlwind, nullptr);
-                cardsPlayedThisTurn++;
-            }
-            // 第三回合：打出两张打击
-            else if (state.turnCount == 3) {
-                if (cardsPlayedThisTurn == 0 && !state.monsters[1]->isDead()) {
-                    STS_LOG(state, "\n--- AI 决策：对史莱姆打出打击 ---\n");
-                    PlayerActions::playCard(state, flow, strike, state.monsters[1]);
-                    cardsPlayedThisTurn++;
-                }
-                else if (cardsPlayedThisTurn == 1 && !state.monsters[2]->isDead()) {
-                    STS_LOG(state, "\n--- AI 决策：对哥布林打出打击 ---\n");
-                    PlayerActions::playCard(state, flow, strike, state.monsters[2]);
-                    cardsPlayedThisTurn++;
-                }
-                else if (cardsPlayedThisTurn >= 2) {
-                    // 出完两张牌后结束回合
-                    PlayerActions::endTurn(state, flow);
-                }
-            }
-            // 其他回合：直接结束回合
-            else if (cardsPlayedThisTurn > 0 || state.turnCount > 3) {
+            if (state.hand.empty()) {
+                STS_LOG(state, "\n--- AI 决策：手牌为空，结束回合 ---\n");
                 PlayerActions::endTurn(state, flow);
+                continue;
             }
+            
+            if (state.player->energy <= 0) {
+                STS_LOG(state, "\n--- AI 决策：能量耗尽，结束回合 ---\n");
+                PlayerActions::endTurn(state, flow);
+                continue;
+            }
+            
+            std::vector<std::shared_ptr<AbstractCard>> playableCards;
+            for (auto& card : state.hand) {
+                if (card->cost == -1 || card->cost <= state.player->energy) {
+                    playableCards.push_back(card);
+                }
+            }
+            
+            if (playableCards.empty()) {
+                STS_LOG(state, "\n--- AI 决策：无可用牌，结束回合 ---\n");
+                PlayerActions::endTurn(state, flow);
+                continue;
+            }
+            
+            std::uniform_int_distribution<int> dist(0, playableCards.size() - 1);
+            int cardIndex = dist(state.rng.combatRng);
+            auto selectedCard = playableCards[cardIndex];
+            
+            std::shared_ptr<Character> target = nullptr;
+            if (selectedCard->type == CardType::ATTACK || selectedCard->type == CardType::SKILL) {
+                std::vector<std::shared_ptr<Monster>> aliveMonsters;
+                for (auto& m : state.monsters) {
+                    if (!m->isDead()) {
+                        aliveMonsters.push_back(m);
+                    }
+                }
+                if (!aliveMonsters.empty()) {
+                    std::uniform_int_distribution<int> monsterDist(0, aliveMonsters.size() - 1);
+                    target = aliveMonsters[monsterDist(state.rng.combatRng)];
+                }
+            }
+            
+            STS_LOG(state, "\n--- AI 决策：打出 [" << selectedCard->id << "] ");
+            if (target) {
+                STS_LOG(state, "目标: " << target->name);
+            }
+            STS_LOG(state, " ---\n");
+            
+            PlayerActions::playCard(state, flow, selectedCard, target);
         }
         
         if (flow.currentState == CombatState::BATTLE_END) {
@@ -92,6 +118,12 @@ int main() {
             break; 
         }
     }
+
+    STS_LOG(state, "\n=== [最终牌堆状态] ===\n");
+    STS_LOG(state, "  抽牌堆: " << state.drawPile.size() << " 张\n");
+    STS_LOG(state, "  手牌: " << state.hand.size() << " 张\n");
+    STS_LOG(state, "  弃牌堆: " << state.discardPile.size() << " 张\n");
+    STS_LOG(state, "  消耗堆: " << state.exhaustPile.size() << " 张\n");
 
     return 0;
 }

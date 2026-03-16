@@ -155,6 +155,19 @@ public:
         }
     }
 
+    // ==========================================
+    // 弃掉所有手牌
+    // 
+    // 将所有手牌移入弃牌堆
+    // 用于回合结束时
+    // ==========================================
+    static void discardHand(GameState& state) {
+        while (!state.hand.empty()) {
+            moveToDiscard(state, state.hand.back());
+        }
+        STS_LOG(state, "[DeckSystem] 手牌已全部弃置\n");
+    }
+
 private:
     // ==========================================
     // 从所有牌堆中查找并移除卡牌
