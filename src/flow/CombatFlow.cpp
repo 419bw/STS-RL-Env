@@ -65,7 +65,7 @@ void CombatFlow::tick(GameState& state) {
     if (!state.actionQueue.empty()) {
         auto& action = state.actionQueue.front();
         if (action->update(state)) {
-            state.actionQueue.pop();
+            state.actionQueue.pop_front();
         }
         
         // SBA：动作执行完毕后，进行全局巡视
@@ -95,6 +95,7 @@ void CombatFlow::tick(GameState& state) {
             state.player->energy = 3;
             state.player->block = 0;
             state.isPlayerTurn = true;  // 拨动时间开关：玩家回合开始
+            state.currentPhase = StatePhase::PLAYING_CARD;  // 设置自由出牌状态
             STS_LOG(state, "\n=== [PHASE] 玩家回合开始 ===\n");
             
             state.eventBus.publish(EventType::PHASE_PLAYER_TURN_START, state);

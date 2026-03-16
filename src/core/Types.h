@@ -62,3 +62,25 @@ enum class PowerType {
     BUFF,    // 增益
     DEBUFF   // 减益
 };
+
+// ==========================================
+// 玩家行动子状态 (State Phase)
+// 用于细化 PLAYER_ACTION 阶段
+// ==========================================
+
+enum class StatePhase {
+    PLAYING_CARD,                 // 自由出牌阶段
+    WAITING_FOR_CARD_SELECTION    // 队列挂起，等待选牌阶段
+};
+
+// ==========================================
+// 选牌目的枚举 (Selection Purpose)
+// 用于路由选牌后的物理结算动作
+// ==========================================
+
+enum class SelectionPurpose {
+    EXHAUST_FROM_HAND,      // 从手牌选一张消耗 (如: 坚毅)
+    MOVE_TO_HAND,           // 选一张放入手牌 (如: 全息影像、寻求)
+    DISCARD_FROM_HAND       // 从手牌选一张丢弃 (如: 绝境求生)
+    // [未来扩展预留位置]
+};

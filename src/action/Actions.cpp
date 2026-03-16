@@ -202,10 +202,8 @@ bool RemoveSpecificPowerAction::update(GameState& state) {
         STS_LOG(state, "-> 强制净化！[" << power->name << "] 被直接从 " 
                   << target->name << " 身上移除。\n");
         
-        // 触发遗言（如果有）
         power->onRemove(state);
         
-        // 无视层数，绝对抹杀
         auto& powers = target->powers;
         powers.erase(
             std::remove(powers.begin(), powers.end(), power),
@@ -213,6 +211,107 @@ bool RemoveSpecificPowerAction::update(GameState& state) {
         );
         
         ENGINE_TRACE("Power 强制移除: " << power->name << " 已从 " << target->name << " 身上移除");
+    }
+    return true;
+}
+
+// ==========================================
+// RequestCardSelectionAction 实现
+// 
+// 核心职责：
+// 1. 切换状态，冻结引擎
+// 2. 写入选牌上下文（使用 CardSelectionContext）
+// 3. 返回 true，将自己踢出队列
+// 
+// 引擎由于 Phase 改变，将自动暂停推演
+// ==========================================
+bool RequestCardSelectionAction::update(GameState& state) {
+    if (sourcePile.empty()) {
+        return true;  // 无牌可选，直接跳过
+    }
+
+    // 1. 切换状态，冻结引擎
+    state.currentPhase = StatePhase::WAITING_FOR_CARD_SELECTION;
+    
+    // 2. 写入上下文（使用 CardSelectionContext）
+    CardSelectionContext ctx;
+    ctx.choices = sourcePile;
+    ctx.purpose = purpose;
+    ctx.minSelection = std::min(this->minSelection, static_cast<int>(sourcePile.size()));
+    ctx.maxSelection = std::min(this->maxSelection, static_cast<int>(sourcePile.size()));
+    state.selectionCtx = ctx;
+
+    // 3. 输出日志
+    if (ctx.minSelection == ctx.maxSelection) {
+        STS_LOG(state, "[选牌请求] 请选择 " << ctx.minSelection << " 张牌\n");
+    } else {
+        STS_LOG(state, "[选牌请求] 请选择 " << ctx.minSelection << "-" << ctx.maxSelection << " 张牌\n");
+    }
+    for (size_t i = 0; i < sourcePile.size(); ++i) {
+        STS_LOG(state, "  [" << i << "] " << sourcePile[i]->id << "\n");
+    }
+
+    // 4. 返回 true，将自己踢出队列
+    // 此时引擎由于 Phase 改变，将自动暂停推演
+    return true;
+}
+
+// ==========================================
+// SpecificCardExhaustAction 实现
+// 
+// 极其原子的物理结算动作
+// 由 chooseCard 根据 Purpose 路由创建
+// ==========================================
+bool SpecificCardExhaustAction::update(GameState& state) {
+    if (targetCard) {
+        // 从手牌中移除
+        auto& hand = state.hand;
+        auto it = std::find(hand.begin(), hand.end(), targetCard);
+        if (it != hand.end()) {
+            hand.erase(it);
+        }
+        
+        STS_LOG(state, "-> " << targetCard->id << " 被消耗了。\n");
+    }
+    return true;
+}
+
+// ==========================================
+// MoveCardToHandAction 实现
+// ==========================================
+bool MoveCardToHandAction::update(GameState& state) {
+    if (targetCard) {
+        // 从弃牌堆移除
+        auto& discard = state.discardPile;
+        auto it = std::find(discard.begin(), discard.end(), targetCard);
+        if (it != discard.end()) {
+            discard.erase(it);
+        }
+        
+        // 加入手牌
+        state.hand.push_back(targetCard);
+        
+        STS_LOG(state, "-> " << targetCard->id << " 被移入手牌。\n");
+    }
+    return true;
+}
+
+// ==========================================
+// SpecificCardDiscardAction 实现
+// ==========================================
+bool SpecificCardDiscardAction::update(GameState& state) {
+    if (targetCard) {
+        // 从手牌中移除
+        auto& hand = state.hand;
+        auto it = std::find(hand.begin(), hand.end(), targetCard);
+        if (it != hand.end()) {
+            hand.erase(it);
+        }
+        
+        // 加入弃牌堆
+        state.discardPile.push_back(targetCard);
+        
+        STS_LOG(state, "-> " << targetCard->id << " 被丢弃了。\n");
     }
     return true;
 }

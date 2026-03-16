@@ -2,8 +2,10 @@
 
 #include "AbstractAction.h"
 #include "src/core/ForwardDeclarations.h"
+#include "src/core/Types.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 // ==========================================
 // 占位动作 (Dummy Action) - 用于状态机流程
@@ -96,5 +98,78 @@ class RemoveSpecificPowerAction : public AbstractAction {
     std::shared_ptr<AbstractPower> power;
 public:
     RemoveSpecificPowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p);
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：请求选牌 (Request Card Selection Action)
+// 
+// 核心职责：
+// 1. 切换状态，冻结引擎
+// 2. 写入选牌上下文
+// 3. 返回 true，将自己踢出队列
+// 
+// 引擎由于 Phase 改变，将自动暂停推演
+// 
+// 支持区间选择：
+// - "必须选1张" -> minSelection=1, maxSelection=1
+// - "最多选2张" -> minSelection=0, maxSelection=2
+// ==========================================
+class RequestCardSelectionAction : public AbstractAction {
+    std::vector<std::shared_ptr<AbstractCard>> sourcePile;
+    SelectionPurpose purpose;
+    int minSelection;
+    int maxSelection;
+
+public:
+    RequestCardSelectionAction(
+        const std::vector<std::shared_ptr<AbstractCard>>& pile,
+        SelectionPurpose p,
+        int minAmt = 1,
+        int maxAmt = 1
+    ) : sourcePile(pile), purpose(p), minSelection(minAmt), maxSelection(maxAmt) {}
+
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：消耗指定卡牌 (Specific Card Exhaust Action)
+// 
+// 极其原子的物理结算动作
+// 由 chooseCard 根据 Purpose 路由创建
+// ==========================================
+class SpecificCardExhaustAction : public AbstractAction {
+    std::shared_ptr<AbstractCard> targetCard;
+
+public:
+    SpecificCardExhaustAction(std::shared_ptr<AbstractCard> card)
+        : targetCard(card) {}
+
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：将卡牌移入手牌 (Move Card To Hand Action)
+// ==========================================
+class MoveCardToHandAction : public AbstractAction {
+    std::shared_ptr<AbstractCard> targetCard;
+
+public:
+    MoveCardToHandAction(std::shared_ptr<AbstractCard> card)
+        : targetCard(card) {}
+
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：丢弃指定卡牌 (Specific Card Discard Action)
+// ==========================================
+class SpecificCardDiscardAction : public AbstractAction {
+    std::shared_ptr<AbstractCard> targetCard;
+
+public:
+    SpecificCardDiscardAction(std::shared_ptr<AbstractCard> card)
+        : targetCard(card) {}
+
     bool update(GameState& state) override;
 };

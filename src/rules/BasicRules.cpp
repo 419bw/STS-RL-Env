@@ -18,8 +18,8 @@ void BasicRules::registerRules(GameState& state) {
     state.eventBus.subscribe(EventType::PHASE_BATTLE_START, 
         [](GameState& gs, void*) -> bool {
             STS_LOG(gs, "    [BasicRules] 战斗开始 -> 洗牌 + 抽 5 张初始手牌\n");
-            gs.actionQueue.push(std::make_unique<DummyAction>("洗牌入抽牌堆"));
-            gs.actionQueue.push(std::make_unique<DummyAction>("抽取 5 张初始手牌"));
+            gs.actionQueue.push_back(std::make_unique<DummyAction>("洗牌入抽牌堆"));
+            gs.actionQueue.push_back(std::make_unique<DummyAction>("抽取 5 张初始手牌"));
             return true;
         });
 
@@ -27,7 +27,7 @@ void BasicRules::registerRules(GameState& state) {
     state.eventBus.subscribe(EventType::PHASE_PLAYER_TURN_START, 
         [](GameState& gs, void*) -> bool {
             STS_LOG(gs, "    [BasicRules] 玩家回合开始 -> 抽 1 张牌\n");
-            gs.actionQueue.push(std::make_unique<DummyAction>("抽取 1 张牌"));
+            gs.actionQueue.push_back(std::make_unique<DummyAction>("抽取 1 张牌"));
             return true;
         });
 
@@ -35,7 +35,7 @@ void BasicRules::registerRules(GameState& state) {
     state.eventBus.subscribe(EventType::PHASE_PLAYER_TURN_END, 
         [](GameState& gs, void*) -> bool {
             STS_LOG(gs, "    [BasicRules] 玩家回合结束 -> 弃置所有手牌\n");
-            gs.actionQueue.push(std::make_unique<DummyAction>("弃置所有手牌"));
+            gs.actionQueue.push_back(std::make_unique<DummyAction>("弃置所有手牌"));
             return true;
         });
 
@@ -45,7 +45,7 @@ void BasicRules::registerRules(GameState& state) {
             for (auto& monster : gs.monsters) {
                 if (!monster->isDead()) {
                     STS_LOG(gs, "    [BasicRules] " << monster->name << " 执行意图\n");
-                    gs.actionQueue.push(std::make_unique<DummyAction>(
+                    gs.actionQueue.push_back(std::make_unique<DummyAction>(
                         monster->name + " 执行意图"));
                 }
             }
