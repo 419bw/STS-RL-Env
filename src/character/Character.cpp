@@ -1,5 +1,6 @@
 #include "Character.h"
 #include "src/relic/AbstractRelic.h"
+#include "src/core/Queries.h"
 #include "src/utils/Logger.h"
 
 // ==========================================
@@ -72,4 +73,21 @@ int Character::reduceHealthAndBlock(int damage) {
 int Character::addBlockFinal(int amount) {
     block += amount;
     return amount;
+}
+
+// ==========================================
+// 查询表单处理接口（重载）
+// 让身上的遗物去填表
+// ==========================================
+
+void Character::processQuery(VulnerableMultiplierQuery& query) {
+    for (auto& relic : relics) {
+        relic->onQuery(query);
+    }
+}
+
+void Character::processQuery(WeakMultiplierQuery& query) {
+    for (auto& relic : relics) {
+        relic->onQuery(query);
+    }
 }

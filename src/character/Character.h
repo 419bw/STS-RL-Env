@@ -13,17 +13,16 @@
 // - 不输出日志（由 Action 负责）
 // - 不发布事件（由 Action 负责）
 // - 只负责数值计算和状态变更
-// - 所有遗物/被动带来的乘区修正固化为面板属性
 // 
-// 接口分层：
-// - calculateXxx(): 纯计算，const 方法，不修改状态（可用于预测和 UI）
-// - reduceXxx() / addXxx(): 执行操作，修改状态
-// 
-// 数据驱动原则：
-// - 实体同时扮演"攻击者"和"受击者"角色
-// - 遗物只修改面板属性，不干涉结算流程
-// - Power 是无状态计算器，只读取面板属性
+// 查询表单系统：
+// - 遗物通过查询表单参与数值计算
+// - 零开销抽象，栈内存创建表单
+// - Power 创建表单，递给双方遗物填表
 // ==========================================
+
+// 前向声明查询表单
+struct VulnerableMultiplierQuery;
+struct WeakMultiplierQuery;
 
 class Character : public std::enable_shared_from_this<Character> {
 public:
@@ -44,29 +43,10 @@ public:
     std::vector<std::shared_ptr<class AbstractRelic>> relics;
 
     // ==========================================
-    // 乘区修饰属性（数据驱动的核心）
-    // 遗物通过修改这些属性来影响战斗结算
+    // 乘区修饰属性（简单属性，不需要查询表单）
     // ==========================================
     
-    // --- 易伤相关 ---
-    // 作为攻击者时：对带有易伤的敌人造成的伤害倍率（默认 1.5）
-    float vulnerableDamageDealtMultiplier = 1.5f;
-    // 作为受击者时：自身处于易伤状态承受的伤害倍率（默认 1.5）
-    float vulnerableDamageReceivedMultiplier = 1.5f;
-    
-    // --- 虚弱相关 ---
-    // 作为攻击者时：自身处于虚弱状态造成的伤害倍率（默认 0.75）
-    float weakDamageDealtMultiplier = 0.75f;
-    // 作为受击者时：对带有虚弱的攻击者承受的伤害倍率（默认 0.75）
-    float weakDamageReceivedMultiplier = 0.75f;
-    
-    // --- 力量相关 ---
-    // 每点力量增加的伤害（默认 1）
-    int strengthDamageBonus = 1;
-    
-    // --- 敏捷相关 ---
-    // 每点敏捷增加的格挡（默认 1）
-    int dexterityBlockBonus = 1;
+
 
     Character(std::string n, int hp) 
         : name(n), current_hp(hp), max_hp(hp), block(0) {}
@@ -87,6 +67,17 @@ public:
     // 计算最终掉血值（考虑状态和遗物拦截）
     // 用于 LoseHpAction（中毒、献祭等）
     int calculateFinalHpLoss(int base_amount) const;
+
+    // ==========================================
+    // 查询表单处理接口（重载）
+    // 让身上的遗物去填表
+    // ==========================================
+    
+    // 重载 1：处理易伤表单
+    void processQuery(VulnerableMultiplierQuery& query);
+    
+    // 重载 2：处理虚弱表单
+    void processQuery(WeakMultiplierQuery& query);
 
     // ==========================================
     // 执行接口 (修改状态)

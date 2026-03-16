@@ -3,18 +3,18 @@
 #include "src/event/EventBus.h"
 #include "src/action/Actions.h"
 #include "src/character/Character.h"
+#include "src/core/Queries.h"
 #include "src/utils/Logger.h"
 #include <iostream>
 
 // ==========================================
 // VulnerablePower 实现
 // 
-// 数据驱动原则：
-// - Power 是纯粹的无状态计算器
-// - 只读取参与双方的面板属性
-// - 不关心属性是怎么来的
-// - 不跨层级访问全局游戏状态
-// - 不硬编码特定遗物名称
+// 查询表单系统：
+// - Power 创建查询表单
+// - 递给攻击者和受击者的遗物填表
+// - 最终读取表单结果结算
+// - 零开销抽象，栈内存创建表单
 // ==========================================
 
 float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
@@ -23,21 +23,23 @@ float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
         return damage;
     }
     
-    float multiplier = 1.5f; 
-
-    // 1. 如果攻击方有特化面板（比如纸蛙 1.75），用攻击方的
-    if (source && source->vulnerableDamageDealtMultiplier != 1.5f) {
-        multiplier = source->vulnerableDamageDealtMultiplier;
+    // 1. 拿出一张崭新的查询表单（栈内存，零开销）
+    VulnerableMultiplierQuery query{source, owner.get()};
+    
+    // 2. 把表单递给攻击者，让他看看有没有什么要改的（触发纸蛙）
+    if (source) {
+        source->processQuery(query);
     }
     
-    // 2. 如果受击方有特化面板（比如蘑菇 1.25），用受击方的
-    if (owner && owner->vulnerableDamageReceivedMultiplier != 1.5f) {
-        multiplier = owner->vulnerableDamageReceivedMultiplier;
+    // 3. 把表单递给受击者，让他看看有没有什么要改的（触发蘑菇）
+    if (owner) {
+        owner->processQuery(query);
     }
     
-    float final_damage = damage * multiplier;
+    // 4. 结算收工！
+    float final_damage = damage * query.multiplier;
     ENGINE_TRACE("[" << name << "] 伤害修饰: " << damage << " -> " << final_damage 
-                 << " (x" << multiplier << " 倍率)");
+                 << " (x" << query.multiplier << " 倍率)");
     return final_damage;
 }
 
@@ -51,17 +53,12 @@ void VulnerablePower::onApply(GameState& state) {
                 return false;
             }
             
-            // 检查保护罩
             if (self->justApplied) {
-                // 刚挂上的状态，剥夺保护罩，本轮次不掉层
                 self->justApplied = false;
                 ENGINE_TRACE("VulnerablePower 保护罩解除: 下轮次开始正常掉层");
                 return true;
             }
             
-            // 按照官方逻辑：
-            // - 如果层数为 0，直接移除
-            // - 否则，减少 1 层
             if (self->amount == 0) {
                 gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
             } else {
@@ -95,7 +92,6 @@ void PoisonPower::onApply(GameState& state) {
                     gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
                 } else {
                     ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
-                    // 中毒：无视护甲，直接扣血
                     gs.addAction(std::make_unique<LoseHpAction>(self->owner, self->amount));
                     gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
                 }
