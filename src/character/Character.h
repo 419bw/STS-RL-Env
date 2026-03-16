@@ -35,6 +35,13 @@ public:
     int max_hp;
     int block;
     std::vector<std::shared_ptr<AbstractPower>> powers;
+    
+    // ==========================================
+    // 遗物背包
+    // 用于高频数值查询的实体挂载
+    // 遗物在 onEquip 时会把自己塞进这里
+    // ==========================================
+    std::vector<std::shared_ptr<class AbstractRelic>> relics;
 
     // ==========================================
     // 乘区修饰属性（数据驱动的核心）
@@ -76,6 +83,10 @@ public:
     
     // 计算最终获得的格挡值（考虑敏捷等状态修饰）
     int calculateFinalBlock(int base_block) const;
+    
+    // 计算最终掉血值（考虑状态和遗物拦截）
+    // 用于 LoseHpAction（中毒、献祭等）
+    int calculateFinalHpLoss(int base_amount) const;
 
     // ==========================================
     // 执行接口 (修改状态)

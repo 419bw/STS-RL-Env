@@ -27,10 +27,10 @@ int main() {
     BasicRules::registerRules(state);
 
     auto vajra = std::make_shared<CustomVajraRelic>();
-    vajra->onEquip(state);
+    vajra->onEquip(state, state.player.get());
     
     auto chemical_x = std::make_shared<ChemicalXRelic>();
-    chemical_x->onEquip(state);
+    chemical_x->onEquip(state, state.player.get());
 
     auto strike = std::make_shared<StrikeCard>();
     auto whirlwind = std::make_shared<WhirlwindCard>();

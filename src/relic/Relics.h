@@ -10,7 +10,7 @@
 class CustomVajraRelic : public AbstractRelic {
 public:
     CustomVajraRelic() : AbstractRelic("魔改金刚杵") {}
-    void onEquip(GameState& state) override;
+    void onEquip(GameState& state, Character* target) override;
 };
 
 // ==========================================
@@ -19,5 +19,5 @@ public:
 class ChemicalXRelic : public AbstractRelic {
 public:
     ChemicalXRelic() : AbstractRelic("化学物X") {}
-    void onEquip(GameState& state) override;
+    void onEquip(GameState& state, Character* target) override;
 };

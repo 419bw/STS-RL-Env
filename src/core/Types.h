@@ -51,6 +51,7 @@ enum class EventType {
     ON_CARD_PLAYED,       // 打出牌后
     ON_ATTACK,            // 攻击时
     ON_DAMAGE_TAKEN,      // 受到伤害时
+    ON_HP_LOST,           // 失去生命值时（无视护甲的掉血，如中毒）
     ON_TURN_START,        // 角色回合开始时 (带参：是谁的回合)
     ON_TURN_END,          // 角色回合结束时 (带参：是谁的回合)
     ON_ROUND_END          // 整个轮次结束时 (所有带层数的状态统一在这里结算)

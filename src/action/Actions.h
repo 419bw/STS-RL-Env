@@ -21,6 +21,7 @@ public:
 // 数据驱动原则：
 // - 必须携带溯源信息（source: 伤害来源）
 // - Action 负责将 source 传递给计算层
+// - 会受到护甲、状态效果等影响
 // ==========================================
 class DamageAction : public AbstractAction {
     std::shared_ptr<Character> source;  // 伤害来源（攻击者）
@@ -28,6 +29,22 @@ class DamageAction : public AbstractAction {
     int amount;
 public:
     DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a);
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：直接扣血动作 (Lose HP Action)
+// 
+// 特性：
+// - 无视护甲，直接扣除生命值
+// - 不触发伤害相关事件
+// - 用于中毒、献祭等效果
+// ==========================================
+class LoseHpAction : public AbstractAction {
+    std::shared_ptr<Character> target;
+    int amount;
+public:
+    LoseHpAction(std::shared_ptr<Character> t, int a);
     bool update(GameState& state) override;
 };
 
@@ -44,14 +61,10 @@ public:
 
 // ==========================================
 // 具体动作：施加状态效果 (Apply Power Action)
-// 
-// 保护罩逻辑：
-// - 如果在怪物回合 (!isPlayerTurn) 且释放者是怪物，设置 justApplied = true
-// - 否则 justApplied = false
 // ==========================================
 class ApplyPowerAction : public AbstractAction {
-    std::shared_ptr<Character> source;  // 释放者
-    std::shared_ptr<Character> target;  // 目标
+    std::shared_ptr<Character> source;
+    std::shared_ptr<Character> target;
     std::shared_ptr<AbstractPower> power;
 public:
     ApplyPowerAction(std::shared_ptr<Character> src, 

@@ -1,4 +1,5 @@
 #include "Character.h"
+#include "src/relic/AbstractRelic.h"
 #include "src/utils/Logger.h"
 
 // ==========================================
@@ -32,6 +33,23 @@ int Character::calculateFinalBlock(int base_block) const {
         final_block = power->modifyBlockGained(final_block);
     }
     return static_cast<int>(final_block);
+}
+
+int Character::calculateFinalHpLoss(int base_amount) const {
+    int final_amount = base_amount;
+    
+    // 1. 状态拦截（比如【无实体】会在这里把 final_amount 强行改成 1）
+    for (const auto& power : powers) {
+        final_amount = power->modifyHpLoss(final_amount);
+    }
+    
+    // 2. 遗物拦截（比如玩家的【钨钢棍】会在这里把 final_amount 减 1）
+    for (const auto& relic : relics) {
+        final_amount = relic->modifyHpLoss(final_amount);
+    }
+    
+    // 兜底保护：掉血不可能变成回血
+    return std::max(0, final_amount);
 }
 
 // ==========================================

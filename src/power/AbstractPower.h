@@ -56,4 +56,9 @@ public:
     virtual float modifyBlockGained(float block) { 
         return block; 
     }
+    
+    // 修改掉血量（如无实体状态限制掉血为 1）
+    virtual int modifyHpLoss(int amount) const { 
+        return amount; 
+    }
 };

@@ -74,9 +74,10 @@ void VulnerablePower::onApply(GameState& state) {
 // ==========================================
 // PoisonPower 实现
 // 
-// 数据驱动原则：
-// - 中毒伤害不需要跨实体状态结算
-// - 但仍需传递 source（nullptr）以保持接口一致性
+// 特性：
+// - 回合开始时受到等同于层数的伤害
+// - 无视护甲，直接扣除生命值
+// - 回合开始时层数 -1
 // ==========================================
 void PoisonPower::onApply(GameState& state) {
     std::weak_ptr<AbstractPower> weakSelf = shared_from_this();
@@ -85,20 +86,17 @@ void PoisonPower::onApply(GameState& state) {
         [weakSelf](GameState& gs, void* context) -> bool {
             auto self = weakSelf.lock();
             if (!self) {
-                return false;  // 对象已销毁，通知 EventBus 移除此监听者
+                return false;
             }
             
             Character* current_turn_char = static_cast<Character*>(context);
             if (current_turn_char == self->owner.get()) {
-                // 按照官方逻辑：
-                // - 如果层数为 0，直接移除
-                // - 否则，造成伤害并减少 1 层
                 if (self->amount == 0) {
                     gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
                 } else {
                     ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
-                    // 中毒伤害没有来源，传 nullptr
-                    gs.addAction(std::make_unique<DamageAction>(nullptr, self->owner, self->amount));
+                    // 中毒：无视护甲，直接扣血
+                    gs.addAction(std::make_unique<LoseHpAction>(self->owner, self->amount));
                     gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
                 }
             }

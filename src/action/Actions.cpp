@@ -56,6 +56,45 @@ bool DamageAction::update(GameState& state) {
 }
 
 // ==========================================
+// LoseHpAction 实现
+// 
+// 特性：
+// - 无视护甲，直接扣除生命值
+// - 通过计算管线（状态 + 遗物拦截）
+// - 发布 ON_HP_LOST 事件
+// - 用于中毒、献祭等效果
+// ==========================================
+LoseHpAction::LoseHpAction(std::shared_ptr<Character> t, int a) 
+    : target(t), amount(a) {}
+
+bool LoseHpAction::update(GameState& state) {
+    if (!target->isDead()) {
+        // 1. 通过计算管线获取最终掉血值
+        int final_amount = target->calculateFinalHpLoss(amount);
+        
+        // 2. 如果掉血被拦截，输出调试信息
+        if (final_amount != amount) {
+            ENGINE_TRACE("掉血计算: " << amount << " -> " << final_amount 
+                         << " (受状态/遗物拦截)");
+        }
+        
+        // 3. 直接扣除生命值，无视护甲
+        target->current_hp -= final_amount;
+        if (target->current_hp < 0) target->current_hp = 0;
+        
+        // 4. 输出日志
+        STS_LOG(state, target->name << " 失去了 " << final_amount 
+                  << " 点生命值（无视护甲），剩余血量: " << target->current_hp << "\n");
+        
+        // 5. 发布事件
+        state.eventBus.publish(EventType::ON_HP_LOST, state, target.get());
+        
+        // 死亡判定由 SBA（全局巡视）负责
+    }
+    return true;
+}
+
+// ==========================================
 // GainBlockAction 实现
 // 
 // 设计原则：Action 负责日志和事件
