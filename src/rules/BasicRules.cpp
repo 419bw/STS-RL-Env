@@ -51,7 +51,7 @@ void BasicRules::registerRules(GameState& state) {
             for (auto& monster : gs.monsters) {
                 if (!monster->isDead()) {
                     STS_LOG(gs, "    [BasicRules] " << monster->name << " 执行意图\n");
-                    gs.actionQueue.push_back(std::make_unique<DummyAction>(
+                    gs.addAction(std::make_unique<DummyAction>(
                         monster->name + " 执行意图"));
                 }
             }

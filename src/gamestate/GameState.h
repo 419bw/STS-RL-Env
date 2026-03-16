@@ -97,11 +97,6 @@ public:
     std::vector<std::shared_ptr<AbstractCard>> limbo;
 
     // ==========================================
-    // 动作队列 (使用 deque 支持 push_front)
-    // ==========================================
-    std::deque<std::unique_ptr<AbstractAction>> actionQueue;
-
-    // ==========================================
     // 玩家行动子状态
     // ==========================================
     StatePhase currentPhase = StatePhase::PLAYING_CARD;
@@ -134,8 +129,7 @@ public:
     }
 
     // ==========================================
-    // 轻量级容器包装函数
-    // 保留这些函数以避免大规模修改现有代码
+    // 动作队列接口（封装 actionQueue）
     // ==========================================
     
     // 添加动作到队列尾部
@@ -152,4 +146,14 @@ public:
     bool isActionQueueEmpty() const {
         return actionQueue.empty();
     }
+
+private:
+    // ==========================================
+    // 动作队列（私有，外部通过接口访问）
+    // 使用 deque 支持 push_front
+    // ==========================================
+    std::deque<std::unique_ptr<AbstractAction>> actionQueue;
+    
+    // 允许 ActionSystem 直接访问队列进行执行
+    friend class ActionSystem;
 };

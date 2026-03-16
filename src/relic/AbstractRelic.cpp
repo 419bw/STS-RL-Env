@@ -6,12 +6,14 @@
 // 
 // onEquip 实现需要 Character 的完整定义
 // 所以放在 .cpp 文件中避免循环依赖
+// 
+// 注意：owner 设置和 relics.push_back
+// 现在由 Character::addRelic 统一处理
+// 这里只负责事件订阅等逻辑
 // ==========================================
 
 void AbstractRelic::onEquip(GameState& state, Character* target) {
-    this->owner = target;
-    // 把自己塞进主人的背包里，打通 Query 路线
-    if (target) {
-        target->relics.push_back(shared_from_this());
-    }
+    // 基类只做最基础的设置
+    // owner 已由 Character::addRelic 设置
+    // 子类重写时添加事件订阅逻辑
 }

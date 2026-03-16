@@ -42,6 +42,32 @@ int main() {
     STS_LOG(state, "[初始化] 抽牌堆: " << state.drawPile.size() << " 张\n");
     STS_LOG(state, "[初始化] 手牌: " << state.hand.size() << " 张\n");
 
+    // ==========================================
+    // 遗物装备示例：演示封装后的 addRelic 接口
+    // 自动触发 onEquip 生命周期
+    // ==========================================
+    STS_LOG(state, "\n=== [遗物装备] 演示 addRelic 接口 ===\n");
+    
+    // 装备化学物X
+    auto chemicalX = std::make_shared<ChemicalXRelic>();
+    STS_LOG(state, "[遗物] 准备装备: " << chemicalX->name << "\n");
+    state.player->addRelic(chemicalX, state);
+    STS_LOG(state, "[遗物] 装备完成，当前遗物数量: " << state.player->getRelicCount() << "\n");
+    
+    // 尝试重复装备同名遗物（会被跳过）
+    auto chemicalX2 = std::make_shared<ChemicalXRelic>();
+    STS_LOG(state, "\n[遗物] 尝试重复装备同名遗物...\n");
+    state.player->addRelic(chemicalX2, state);
+    STS_LOG(state, "[遗物] 当前遗物数量: " << state.player->getRelicCount() << "\n");
+    
+    // 检查是否拥有遗物
+    STS_LOG(state, "\n[遗物] 检查是否拥有 [化学物X]: " 
+              << (state.player->hasRelic("化学物X") ? "是" : "否") << "\n");
+    STS_LOG(state, "[遗物] 检查是否拥有 [魔改金刚杵]: " 
+              << (state.player->hasRelic("魔改金刚杵") ? "是" : "否") << "\n");
+    
+    STS_LOG(state, "\n");
+
     int lastTurnCount = 0;
 
     for (int step = 0; step < 100; ++step) {
@@ -67,7 +93,7 @@ int main() {
                 continue;
             }
             
-            if (state.player->energy <= 0) {
+            if (state.player->getEnergy() <= 0) {
                 STS_LOG(state, "\n--- AI 决策：能量耗尽，结束回合 ---\n");
                 PlayerActions::endTurn(state, flow);
                 continue;
@@ -75,7 +101,7 @@ int main() {
             
             std::vector<std::shared_ptr<AbstractCard>> playableCards;
             for (auto& card : state.hand) {
-                if (card->cost == -1 || card->cost <= state.player->energy) {
+                if (card->cost == -1 || card->cost <= state.player->getEnergy()) {
                     playableCards.push_back(card);
                 }
             }

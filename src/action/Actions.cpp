@@ -161,20 +161,20 @@ bool ApplyPowerAction::update(GameState& state) {
             // 新添加状态，设置保护罩和触发 onApply
             bool isMonsterSource = (source != state.player);
             if (!state.isPlayerTurn && isMonsterSource) {
-                power->justApplied = true;
+                power->setJustApplied(true);
                 ENGINE_TRACE("保护罩激活: " << power->name << " 刚挂上，本轮次不掉层");
             } else {
-                power->justApplied = false;
+                power->setJustApplied(false);
             }
             
-            STS_LOG(state, "-> 给 " << target->name << " 施加了 " << power->amount 
+            STS_LOG(state, "-> 给 " << target->name << " 施加了 " << power->getAmount() 
                       << " 层 [" << power->name << "]\n");
             power->onApply(state);
         } else {
             // 叠加到已有状态
             auto existingPower = target->getPower(power->name);
             STS_LOG(state, "-> " << target->name << " 的 [" << power->name 
-                      << "] 叠加到 " << existingPower->amount << " 层\n");
+                      << "] 叠加到 " << existingPower->getAmount() << " 层\n");
         }
     }
     return true;
@@ -191,14 +191,14 @@ ReducePowerAction::ReducePowerAction(std::shared_ptr<Character> t,
     : target(t), power(p), reduceAmount(a) {}
 
 bool ReducePowerAction::update(GameState& state) {
-    if (power && power->amount > 0) {
-        power->amount -= reduceAmount;
+    if (power && power->getAmount() > 0) {
+        power->setAmount(power->getAmount() - reduceAmount);
         STS_LOG(state, "-> " << target->name << " 的 [" << power->name 
                   << "] 减少了 " << reduceAmount << " 层，剩余 " 
-                  << power->amount << " 层。\n");
+                  << power->getAmount() << " 层。\n");
         
         // 层数归零时，推入强制移除动作
-        if (power->amount <= 0) {
+        if (power->getAmount() <= 0) {
             STS_LOG(state, "-> [" << power->name << "] 已完全消散。\n");
             state.addAction(std::make_unique<RemoveSpecificPowerAction>(target, power));
         }

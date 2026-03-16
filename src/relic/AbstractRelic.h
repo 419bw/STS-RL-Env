@@ -22,10 +22,14 @@ struct WeakMultiplierQuery;
 class AbstractRelic : public std::enable_shared_from_this<AbstractRelic> {
 public:
     std::string name;
-    Character* owner = nullptr;  // 必须知道自己戴在谁身上
 
     AbstractRelic(std::string n) : name(n) {}
     virtual ~AbstractRelic() = default;
+
+    // ==========================================
+    // Owner 访问接口（封装 owner 指针）
+    // ==========================================
+    Character* getOwner() const { return owner; }
 
     // ==========================================
     // 1. 生命周期与事件订阅 (EventBus 路线)
@@ -36,6 +40,10 @@ public:
     // 1. 调用基类 onEquip（把自己塞进 owner 的背包）
     // 2. 订阅 EventBus 事件
     virtual void onEquip(GameState& state, Character* target);
+    
+    // 在移除遗物时调用
+    // 子类重写时：取消 EventBus 订阅
+    virtual void onRemove(GameState& state) {}
 
     // ==========================================
     // 2. 高频数值拦截器 (Query Pipeline 路线)
@@ -58,4 +66,13 @@ public:
     
     // 重载 2：处理虚弱倍率查询
     virtual void onQuery(WeakMultiplierQuery& query) {}
+
+protected:
+    // ==========================================
+    // 内部引用（私有，由 Character::addRelic 设置）
+    // ==========================================
+    Character* owner = nullptr;
+    
+    // 允许 Character 访问 owner 进行设置
+    friend class Character;
 };

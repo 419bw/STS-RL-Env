@@ -113,7 +113,7 @@ bool Character::addPower(std::shared_ptr<AbstractPower> power) {
     for (auto& existingPower : powers) {
         if (existingPower && existingPower->name == power->name) {
             // 3. 找到同名状态，委托给状态自身处理叠加逻辑
-            existingPower->stackPower(power->amount);
+            existingPower->stackPower(power->getAmount());
             return false;  // 叠加完成，不是新添加
         }
     }
@@ -156,4 +156,71 @@ std::shared_ptr<AbstractPower> Character::getPower(const std::string& powerName)
 
 void Character::clearPowers() {
     powers.clear();
+}
+
+// ==========================================
+// Relic 管理接口实现
+// 
+// 与 Power 管理接口设计一致：
+// - 添加时自动触发 onEquip
+// - 移除时自动触发 onRemove
+// - 外部只能通过接口操作
+// ==========================================
+
+void Character::addRelic(std::shared_ptr<AbstractRelic> relic, GameState& state) {
+    if (!relic) {
+        ENGINE_TRACE("addRelic: 尝试添加空指针 Relic");
+        return;
+    }
+    
+    // 检查是否已存在同名遗物
+    if (hasRelic(relic->name)) {
+        ENGINE_TRACE("addRelic: 遗物 " << relic->name << " 已存在，跳过添加");
+        return;
+    }
+    
+    // 设置 owner 并添加到背包
+    relic->owner = this;
+    relics.push_back(relic);
+    
+    // 触发 onEquip 生命周期
+    relic->onEquip(state, this);
+}
+
+void Character::removeRelic(std::shared_ptr<AbstractRelic> relic, GameState& state) {
+    if (!relic) {
+        return;
+    }
+    
+    auto it = std::find(relics.begin(), relics.end(), relic);
+    if (it != relics.end()) {
+        // 触发 onRemove 生命周期
+        relic->onRemove(state);
+        relics.erase(it);
+    }
+}
+
+bool Character::hasRelic(const std::string& relicName) const {
+    for (const auto& relic : relics) {
+        if (relic && relic->name == relicName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::shared_ptr<AbstractRelic> Character::getRelic(const std::string& relicName) const {
+    for (const auto& relic : relics) {
+        if (relic && relic->name == relicName) {
+            return relic;
+        }
+    }
+    return nullptr;
+}
+
+void Character::clearRelics(GameState& state) {
+    for (auto& relic : relics) {
+        relic->onRemove(state);
+    }
+    relics.clear();
 }

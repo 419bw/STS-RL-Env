@@ -33,11 +33,11 @@ bool PlayerActions::playCard(GameState& state,
     // ==========================================
     if (card->cost == -1) {
         // X 费牌：消耗所有能量
-        card->energyOnUse = state.player->energy;
-        state.player->energy = 0;
-    } else if (state.player->energy >= card->cost) {
+        card->energyOnUse = state.player->getEnergy();
+        state.player->spendEnergy(-1);  // -1 表示消耗所有
+    } else if (state.player->hasEnoughEnergy(card->cost)) {
         // 普通牌：扣除对应费用
-        state.player->energy -= card->cost;
+        state.player->spendEnergy(card->cost);
     } else {
         // 费用不足
         STS_LOG(state, "[系统拦截] 费用不足，无法打出 " << card->id << "!\n");

@@ -33,18 +33,6 @@ public:
     int current_hp;
     int max_hp;
     int block;
-    
-    // ==========================================
-    // 遗物背包
-    // 用于高频数值查询的实体挂载
-    // 遗物在 onEquip 时会把自己塞进这里
-    // ==========================================
-    std::vector<std::shared_ptr<class AbstractRelic>> relics;
-
-    // ==========================================
-    // 乘区修饰属性（简单属性，不需要查询表单）
-    // ==========================================
-    
 
     Character(std::string n, int hp) 
         : name(n), current_hp(hp), max_hp(hp), block(0) {}
@@ -127,11 +115,51 @@ public:
         }
     }
 
+    // ==========================================
+    // Relic 管理接口（封装 relics 数组）
+    // 
+    // 设计原则：与 Power 管理接口一致
+    // - 外部只能通过接口操作 Relic
+    // - 添加时自动触发 onEquip
+    // - 移除时自动触发 onRemove
+    // ==========================================
+    
+    // 添加遗物（自动触发 onEquip）
+    void addRelic(std::shared_ptr<class AbstractRelic> relic, GameState& state);
+    
+    // 移除遗物（自动触发 onRemove）
+    void removeRelic(std::shared_ptr<class AbstractRelic> relic, GameState& state);
+    
+    // 检查是否存在指定名称的遗物
+    bool hasRelic(const std::string& relicName) const;
+    
+    // 获取指定名称的遗物（返回 nullptr 表示不存在）
+    std::shared_ptr<class AbstractRelic> getRelic(const std::string& relicName) const;
+    
+    // 获取遗物数量
+    size_t getRelicCount() const { return relics.size(); }
+    
+    // 清空所有遗物
+    void clearRelics(GameState& state);
+    
+    // 遍历遗物的只读访问（用于计算层遍历）
+    template<typename Func>
+    void forEachRelic(Func&& func) const {
+        for (const auto& relic : relics) {
+            func(relic);
+        }
+    }
+
 private:
     // ==========================================
     // 状态效果列表（私有，外部只能通过接口访问）
     // ==========================================
     std::vector<std::shared_ptr<AbstractPower>> powers;
+    
+    // ==========================================
+    // 遗物背包（私有，外部只能通过接口访问）
+    // ==========================================
+    std::vector<std::shared_ptr<class AbstractRelic>> relics;
 };
 
 // ==========================================
@@ -139,8 +167,45 @@ private:
 // ==========================================
 class Player : public Character {
 public:
-    int energy; // 当前费用
     Player(std::string n, int hp) : Character(n, hp), energy(3) {}
+    
+    // ==========================================
+    // Energy 管理接口（封装 energy 成员）
+    // ==========================================
+    
+    // 获取当前费用
+    int getEnergy() const { return energy; }
+    
+    // 检查是否有足够费用
+    bool hasEnoughEnergy(int cost) const { 
+        return cost == -1 || energy >= cost;  // -1 表示 X 费牌
+    }
+    
+    // 消耗费用（返回实际消耗量）
+    int spendEnergy(int cost) {
+        if (cost == -1) {
+            // X 费牌：消耗所有费用
+            int spent = energy;
+            energy = 0;
+            return spent;
+        }
+        int spent = std::min(energy, cost);
+        energy -= spent;
+        return spent;
+    }
+    
+    // 重置费用（回合开始时调用）
+    void resetEnergy(int maxEnergy = 3) {
+        energy = maxEnergy;
+    }
+    
+    // 增加费用（如某些遗物效果）
+    void gainEnergy(int amount) {
+        energy += amount;
+    }
+
+private:
+    int energy;  // 当前费用
 };
 
 // ==========================================

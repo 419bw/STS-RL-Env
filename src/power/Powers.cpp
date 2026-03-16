@@ -19,12 +19,12 @@
 
 float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
     // 层数为 0 时不再生效
-    if (amount <= 0) {
+    if (getAmount() <= 0) {
         return damage;
     }
     
     // 1. 拿出一张崭新的查询表单（栈内存，零开销）
-    VulnerableMultiplierQuery query{source, owner.get()};
+    VulnerableMultiplierQuery query{source, getOwner().get()};
     
     // 2. 把表单递给攻击者，让他看看有没有什么要改的（触发纸蛙）
     if (source) {
@@ -32,8 +32,8 @@ float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
     }
     
     // 3. 把表单递给受击者，让他看看有没有什么要改的（触发蘑菇）
-    if (owner) {
-        owner->processQuery(query);
+    if (getOwner()) {
+        getOwner()->processQuery(query);
     }
     
     // 4. 结算收工！
@@ -53,16 +53,16 @@ void VulnerablePower::onApply(GameState& state) {
                 return false;
             }
             
-            if (self->justApplied) {
-                self->justApplied = false;
+            if (self->isJustApplied()) {
+                self->setJustApplied(false);
                 ENGINE_TRACE("VulnerablePower 保护罩解除: 下轮次开始正常掉层");
                 return true;
             }
             
-            if (self->amount == 0) {
-                gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
+            if (self->getAmount() == 0) {
+                gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->getOwner(), self));
             } else {
-                gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
+                gs.addAction(std::make_unique<ReducePowerAction>(self->getOwner(), self, 1));
             }
             return true;
         });
@@ -87,13 +87,13 @@ void PoisonPower::onApply(GameState& state) {
             }
             
             Character* current_turn_char = static_cast<Character*>(context);
-            if (current_turn_char == self->owner.get()) {
-                if (self->amount == 0) {
-                    gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->owner, self));
+            if (current_turn_char == self->getOwner().get()) {
+                if (self->getAmount() == 0) {
+                    gs.addAction(std::make_unique<RemoveSpecificPowerAction>(self->getOwner(), self));
                 } else {
-                    ENGINE_TRACE("PoisonPower 触发: " << self->amount << " 层中毒造成伤害");
-                    gs.addAction(std::make_unique<LoseHpAction>(self->owner, self->amount));
-                    gs.addAction(std::make_unique<ReducePowerAction>(self->owner, self, 1));
+                    ENGINE_TRACE("PoisonPower 触发: " << self->getAmount() << " 层中毒造成伤害");
+                    gs.addAction(std::make_unique<LoseHpAction>(self->getOwner(), self->getAmount()));
+                    gs.addAction(std::make_unique<ReducePowerAction>(self->getOwner(), self, 1));
                 }
             }
             return true;

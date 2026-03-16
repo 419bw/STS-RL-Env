@@ -84,7 +84,7 @@ void CombatFlow::tick(GameState& state) {
             break;
 
         case CombatState::PLAYER_TURN_START:
-            state.player->energy = 3;
+            state.player->resetEnergy(3);
             state.player->block = 0;
             state.isPlayerTurn = true;
             state.currentPhase = StatePhase::PLAYING_CARD;
