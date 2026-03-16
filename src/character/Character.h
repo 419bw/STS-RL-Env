@@ -33,7 +33,6 @@ public:
     int current_hp;
     int max_hp;
     int block;
-    std::vector<std::shared_ptr<AbstractPower>> powers;
     
     // ==========================================
     // 遗物背包
@@ -46,7 +45,6 @@ public:
     // 乘区修饰属性（简单属性，不需要查询表单）
     // ==========================================
     
-
 
     Character(std::string n, int hp) 
         : name(n), current_hp(hp), max_hp(hp), block(0) {}
@@ -91,6 +89,49 @@ public:
     
     // 判断是否死亡
     bool isDead() const { return current_hp <= 0; }
+
+    // ==========================================
+    // Power 管理接口（封装 powers 数组）
+    // 
+    // 设计原则：高内聚低耦合
+    // - 外部只能通过接口操作 Power
+    // - 叠加逻辑封装在 Character 内部
+    // - 单一职责：每个接口只负责一项功能
+    // ==========================================
+    
+    // 添加状态（含叠加逻辑）
+    // 返回值：true = 新添加，false = 叠加到已有状态
+    bool addPower(std::shared_ptr<AbstractPower> power);
+    
+    // 移除指定状态
+    void removePower(std::shared_ptr<AbstractPower> power);
+    
+    // 检查是否存在指定名称的状态
+    bool hasPower(const std::string& powerName) const;
+    
+    // 获取指定名称的状态（返回 nullptr 表示不存在）
+    std::shared_ptr<AbstractPower> getPower(const std::string& powerName) const;
+    
+    // 获取状态数量
+    size_t getPowerCount() const { return powers.size(); }
+    
+    // 清空所有状态
+    void clearPowers();
+    
+    // 遍历状态的只读访问（用于计算层遍历）
+    // 使用回调函数模式，避免暴露内部容器
+    template<typename Func>
+    void forEachPower(Func&& func) const {
+        for (const auto& power : powers) {
+            func(power);
+        }
+    }
+
+private:
+    // ==========================================
+    // 状态效果列表（私有，外部只能通过接口访问）
+    // ==========================================
+    std::vector<std::shared_ptr<AbstractPower>> powers;
 };
 
 // ==========================================

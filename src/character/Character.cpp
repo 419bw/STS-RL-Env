@@ -2,6 +2,7 @@
 #include "src/relic/AbstractRelic.h"
 #include "src/core/Queries.h"
 #include "src/utils/Logger.h"
+#include <algorithm>
 
 // ==========================================
 // Character 实现
@@ -90,4 +91,69 @@ void Character::processQuery(WeakMultiplierQuery& query) {
     for (auto& relic : relics) {
         relic->onQuery(query);
     }
+}
+
+// ==========================================
+// Power 管理接口实现
+// 
+// 高内聚低耦合设计：
+// - 所有 Power 操作封装在 Character 内部
+// - 外部只能通过接口访问
+// - 叠加逻辑集中管理
+// ==========================================
+
+bool Character::addPower(std::shared_ptr<AbstractPower> power) {
+    // 1. 参数有效性检查
+    if (!power) {
+        ENGINE_TRACE("addPower: 尝试添加空指针 Power");
+        return false;
+    }
+    
+    // 2. 查找是否存在同名状态
+    for (auto& existingPower : powers) {
+        if (existingPower && existingPower->name == power->name) {
+            // 3. 找到同名状态，委托给状态自身处理叠加逻辑
+            existingPower->stackPower(power->amount);
+            return false;  // 叠加完成，不是新添加
+        }
+    }
+    
+    // 4. 未找到同名状态，添加新状态到数组
+    power->owner = shared_from_this();
+    powers.push_back(power);
+    
+    return true;  // 新添加成功
+}
+
+void Character::removePower(std::shared_ptr<AbstractPower> power) {
+    if (!power) {
+        return;
+    }
+    
+    auto it = std::find(powers.begin(), powers.end(), power);
+    if (it != powers.end()) {
+        powers.erase(it);
+    }
+}
+
+bool Character::hasPower(const std::string& powerName) const {
+    for (const auto& power : powers) {
+        if (power && power->name == powerName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::shared_ptr<AbstractPower> Character::getPower(const std::string& powerName) const {
+    for (const auto& power : powers) {
+        if (power && power->name == powerName) {
+            return power;
+        }
+    }
+    return nullptr;
+}
+
+void Character::clearPowers() {
+    powers.clear();
 }

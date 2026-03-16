@@ -146,19 +146,36 @@ ApplyPowerAction::ApplyPowerAction(std::shared_ptr<Character> src,
 
 bool ApplyPowerAction::update(GameState& state) {
     if (!target->isDead()) {
-        bool isMonsterSource = (source != state.player);
-        if (!state.isPlayerTurn && isMonsterSource) {
-            power->justApplied = true;
-            ENGINE_TRACE("保护罩激活: " << power->name << " 刚挂上，本轮次不掉层");
-        } else {
-            power->justApplied = false;
-        }
+        // ==========================================
+        // 状态叠加逻辑（委托给 Character 接口）
+        // 
+        // Character::addPower 内部处理：
+        // - 查找同名状态
+        // - 存在则调用 stackPower 叠加
+        // - 不存在则添加新状态
+        // ==========================================
         
-        STS_LOG(state, "-> 给 " << target->name << " 施加了 " << power->amount 
-                  << " 层 [" << power->name << "]\n");
-        power->owner = target;
-        target->powers.push_back(power);
-        power->onApply(state);
+        bool isNewPower = target->addPower(power);
+        
+        if (isNewPower) {
+            // 新添加状态，设置保护罩和触发 onApply
+            bool isMonsterSource = (source != state.player);
+            if (!state.isPlayerTurn && isMonsterSource) {
+                power->justApplied = true;
+                ENGINE_TRACE("保护罩激活: " << power->name << " 刚挂上，本轮次不掉层");
+            } else {
+                power->justApplied = false;
+            }
+            
+            STS_LOG(state, "-> 给 " << target->name << " 施加了 " << power->amount 
+                      << " 层 [" << power->name << "]\n");
+            power->onApply(state);
+        } else {
+            // 叠加到已有状态
+            auto existingPower = target->getPower(power->name);
+            STS_LOG(state, "-> " << target->name << " 的 [" << power->name 
+                      << "] 叠加到 " << existingPower->amount << " 层\n");
+        }
     }
     return true;
 }
@@ -205,12 +222,7 @@ bool RemoveSpecificPowerAction::update(GameState& state) {
                   << target->name << " 身上移除。\n");
         
         power->onRemove(state);
-        
-        auto& powers = target->powers;
-        powers.erase(
-            std::remove(powers.begin(), powers.end(), power),
-            powers.end()
-        );
+        target->removePower(power);
         
         ENGINE_TRACE("Power 强制移除: " << power->name << " 已从 " << target->name << " 身上移除");
     }

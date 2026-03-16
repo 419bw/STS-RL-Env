@@ -31,6 +31,21 @@ public:
         : name(n), amount(a), type(t), justApplied(false) {}
     virtual ~AbstractPower() = default;
 
+    // ==========================================
+    // 状态叠加接口
+    // 
+    // 当对同一目标施加同名状态时调用
+    // amount = -1 表示不可叠加（如能力牌效果）
+    // 默认实现：层数相加
+    // ==========================================
+    virtual void stackPower(int stackAmount) {
+        if (this->amount == -1) {
+            // 不可叠加状态，什么都不做
+            return;
+        }
+        this->amount += stackAmount;
+    }
+
     // 状态挂载时触发，用于注册事件
     virtual void onApply(GameState& state) {}
     
