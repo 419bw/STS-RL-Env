@@ -47,10 +47,23 @@ set(CARD_SOURCES
 
 set(RELIC_SOURCES
     src/relic/Relics.cpp
+    src/relic/AbstractRelic.cpp
 )
 
 set(GAMESTATE_SOURCES
     src/gamestate/GameState.cpp
+)
+
+set(FLOW_SOURCES
+    src/flow/CombatFlow.cpp
+)
+
+set(RULES_SOURCES
+    src/rules/BasicRules.cpp
+)
+
+set(PLAYER_ACTIONS_SOURCES
+    src/action/PlayerActions.cpp
 )
 
 # 合并所有源文件
@@ -63,6 +76,9 @@ set(ALL_SOURCES
     ${CARD_SOURCES}
     ${RELIC_SOURCES}
     ${GAMESTATE_SOURCES}
+    ${FLOW_SOURCES}
+    ${RULES_SOURCES}
+    ${PLAYER_ACTIONS_SOURCES}
     src/main.cpp
 )
 

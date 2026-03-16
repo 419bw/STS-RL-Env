@@ -4,11 +4,35 @@
 #include <vector>
 #include <deque>
 #include <optional>
+#include <random>
 #include "src/core/Types.h"
 #include "src/event/EventBus.h"
 #include "src/character/Character.h"
 #include "src/action/AbstractAction.h"
 #include "src/card/AbstractCard.h"
+
+// ==========================================
+// RandomManager - 隔离随机数生成器
+// 
+// 核心原则：绝对局部确定性
+// - 每个用途使用独立的 RNG，互不干扰
+// - 保证多线程环境下可复现
+// - 严禁使用全局 RNG
+// ==========================================
+struct RandomManager {
+    std::mt19937 shuffleRng;     // 专用于洗牌 (核心隔离)
+    std::mt19937 monsterRng;     // 专用于怪物意图生成
+    std::mt19937 combatRng;      // 专用于战斗内随机效果 (随机伤害/弃牌等)
+    std::mt19937 mapAndDropRng;  // 专用于局外大盘掉落 (遗物/地图等)
+
+    RandomManager(unsigned int masterSeed = 1337) {
+        std::mt19937 masterGenerator(masterSeed);
+        shuffleRng.seed(masterGenerator());
+        monsterRng.seed(masterGenerator());
+        combatRng.seed(masterGenerator());
+        mapAndDropRng.seed(masterGenerator());
+    }
+};
 
 // ==========================================
 // GameState - 纯数据容器 (Anemic Domain Model)
@@ -22,6 +46,10 @@
 // - selectionCtx: 选牌上下文（可选）
 // 
 // 铁律三：所有业务逻辑由 ActionSystem 执行
+// 
+// 铁律四：绝对局部确定性
+// - 所有随机操作必须使用 rng 中的隔离 RNG
+// - 严禁使用全局随机数生成器
 // ==========================================
 
 class GameState {
@@ -45,10 +73,28 @@ public:
     // 事件总线
     EventBus eventBus;
 
-    // 牌库系统
+    // ==========================================
+    // 隔离随机数生成器
+    // 保证多线程环境下的绝对局部确定性
+    // ==========================================
+    RandomManager rng;
+
+    // ==========================================
+    // 牌库系统 (5 个物理牌堆)
+    // 
+    // drawPile:    抽牌堆
+    // hand:        手牌
+    // discardPile: 弃牌堆
+    // exhaustPile: 消耗堆
+    // limbo:       滞留区 - 极其重要！
+    //              用于存放正在执行自身效果的卡牌
+    //              防止洗牌时被错误洗回抽牌堆
+    // ==========================================
     std::vector<std::shared_ptr<AbstractCard>> drawPile;
     std::vector<std::shared_ptr<AbstractCard>> hand;
     std::vector<std::shared_ptr<AbstractCard>> discardPile;
+    std::vector<std::shared_ptr<AbstractCard>> exhaustPile;
+    std::vector<std::shared_ptr<AbstractCard>> limbo;
 
     // ==========================================
     // 动作队列 (使用 deque 支持 push_front)
@@ -73,12 +119,17 @@ public:
     // ==========================================
     std::optional<CardSelectionContext> selectionCtx = std::nullopt;
 
-    GameState() 
+    // ==========================================
+    // 构造函数
+    // seed: 随机种子，默认 1337，保证可复现性
+    // ==========================================
+    GameState(unsigned int seed = 1337) 
         : turnCount(0),
           isPlayerDead(false),
           isMonsterDead(false),
           isPlayerTurn(false),
-          enableLogging(true) {
+          enableLogging(true),
+          rng(seed) {
         player = std::make_shared<Player>("战士", 80);
     }
 

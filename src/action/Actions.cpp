@@ -4,6 +4,7 @@
 #include "src/gamestate/GameState.h"
 #include "src/event/EventBus.h"
 #include "src/card/AbstractCard.h"
+#include "src/system/DeckSystem.h"
 #include "src/utils/Logger.h"
 #include <iostream>
 #include <algorithm>
@@ -260,59 +261,77 @@ bool RequestCardSelectionAction::update(GameState& state) {
 // ==========================================
 // SpecificCardExhaustAction 实现
 // 
-// 极其原子的物理结算动作
-// 由 chooseCard 根据 Purpose 路由创建
+// 委托给 DeckSystem
 // ==========================================
 bool SpecificCardExhaustAction::update(GameState& state) {
     if (targetCard) {
-        // 从手牌中移除
-        auto& hand = state.hand;
-        auto it = std::find(hand.begin(), hand.end(), targetCard);
-        if (it != hand.end()) {
-            hand.erase(it);
-        }
-        
-        STS_LOG(state, "-> " << targetCard->id << " 被消耗了。\n");
+        DeckSystem::moveToExhaust(state, targetCard);
     }
     return true;
 }
 
 // ==========================================
 // MoveCardToHandAction 实现
+// 
+// 委托给 DeckSystem
+// 爆牌判定：手牌 >= 10 时进入弃牌堆
 // ==========================================
 bool MoveCardToHandAction::update(GameState& state) {
     if (targetCard) {
-        // 从弃牌堆移除
-        auto& discard = state.discardPile;
-        auto it = std::find(discard.begin(), discard.end(), targetCard);
-        if (it != discard.end()) {
-            discard.erase(it);
-        }
-        
-        // 加入手牌
-        state.hand.push_back(targetCard);
-        
-        STS_LOG(state, "-> " << targetCard->id << " 被移入手牌。\n");
+        DeckSystem::moveToHand(state, targetCard);
     }
     return true;
 }
 
 // ==========================================
 // SpecificCardDiscardAction 实现
+// 
+// 委托给 DeckSystem
 // ==========================================
 bool SpecificCardDiscardAction::update(GameState& state) {
     if (targetCard) {
-        // 从手牌中移除
-        auto& hand = state.hand;
-        auto it = std::find(hand.begin(), hand.end(), targetCard);
-        if (it != hand.end()) {
-            hand.erase(it);
-        }
-        
-        // 加入弃牌堆
-        state.discardPile.push_back(targetCard);
-        
-        STS_LOG(state, "-> " << targetCard->id << " 被丢弃了。\n");
+        DeckSystem::moveToDiscard(state, targetCard);
     }
+    return true;
+}
+
+// ==========================================
+// UseCardAction 实现
+// 
+// 滞留区善后：卡牌结算完毕后的最终去向判定
+// ==========================================
+bool UseCardAction::update(GameState& state) {
+    if (!targetCard) {
+        return true;
+    }
+
+    // 1. 从 limbo 滞留区中擦除该卡牌
+    DeckSystem::eraseFromLimbo(state, targetCard);
+
+    // 2. 判定最终去向
+    if (targetCard->isExhaust) {
+        // 消耗牌：进入消耗堆
+        state.exhaustPile.push_back(targetCard);
+        state.eventBus.publish(EventType::ON_CARD_EXHAUSTED, state, targetCard.get());
+        STS_LOG(state, "-> " << targetCard->id << " 已消耗。\n");
+    } else if (targetCard->type == CardType::POWER) {
+        // 能力牌：不进入任何物理牌堆（直接消失）
+        STS_LOG(state, "-> " << targetCard->id << " (能力牌) 已生效。\n");
+    } else {
+        // 普通牌：进入弃牌堆
+        state.discardPile.push_back(targetCard);
+        state.eventBus.publish(EventType::ON_CARD_DISCARDED, state, targetCard.get());
+    }
+
+    return true;
+}
+
+// ==========================================
+// DrawCardsAction 实现
+// 
+// 委托给 DeckSystem
+// ==========================================
+bool DrawCardsAction::update(GameState& state) {
+    DeckSystem::drawCards(state, amount);
     return true;
 }

@@ -5,6 +5,7 @@
 #include "src/card/AbstractCard.h"
 #include "src/system/ActionSystem.h"
 #include "src/utils/Logger.h"
+#include <algorithm>
 #include <iostream>
 
 // ==========================================
@@ -27,31 +28,52 @@ bool PlayerActions::playCard(GameState& state,
         return false;
     }
 
-    // 处理 X 费牌
+    // ==========================================
+    // 步骤 1：扣除费用
+    // ==========================================
     if (card->cost == -1) {
+        // X 费牌：消耗所有能量
         card->energyOnUse = state.player->energy;
         state.player->energy = 0;
-    } 
-    // 处理普通牌
-    else if (state.player->energy >= card->cost) {
+    } else if (state.player->energy >= card->cost) {
+        // 普通牌：扣除对应费用
         state.player->energy -= card->cost;
-    } 
-    // 费用不足
-    else {
+    } else {
+        // 费用不足
         STS_LOG(state, "[系统拦截] 费用不足，无法打出 " << card->id << "!\n");
         return false;
     }
 
-    // 发布"准备打出"事件
+    // ==========================================
+    // 步骤 2：进入滞留区
+    // 将该卡牌从 state.hand 移除，并 push_back 进入 state.limbo
+    // 防止洗牌时被错误洗回抽牌堆
+    // ==========================================
+    auto it = std::find(state.hand.begin(), state.hand.end(), card);
+    if (it != state.hand.end()) {
+        state.hand.erase(it);
+    }
+    state.limbo.push_back(card);
+
+    // ==========================================
+    // 步骤 3：效果排队
+    // 调用 card->use(state, target)，将卡牌自身产生的业务动作推入队列
+    // ==========================================
     state.eventBus.publish(EventType::ON_CARD_PLAYING, state, card.get());
-
-    // 调用卡牌逻辑 (塞入动作队列)
     card->use(state, target);
-
-    // 统一发布"打出后"事件
     state.eventBus.publish(EventType::ON_CARD_PLAYED, state, card.get());
 
-    // ★ RL 引擎的灵魂：立刻驱动队列执行，直到队列为空，或者遇到"阻塞"！
+    // ==========================================
+    // 步骤 4：善后排队
+    // 在队列尾部追加善后动作：UseCardAction
+    // 负责将卡牌从 limbo 移入最终归宿
+    // ==========================================
+    state.addAction(std::make_unique<UseCardAction>(card));
+
+    // ==========================================
+    // 步骤 5：通电执行
+    // 调用 ActionSystem::executeUntilBlocked，瞬间清算所有队列
+    // ==========================================
     ActionSystem::executeUntilBlocked(state, flow);
 
     return true;

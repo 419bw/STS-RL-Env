@@ -173,3 +173,37 @@ public:
 
     bool update(GameState& state) override;
 };
+
+// ==========================================
+// 具体动作：使用卡牌后的善后处理 (Use Card Action)
+// 
+// 核心职责：
+// 1. 从 limbo 滞留区中擦除该卡牌
+// 2. 判定最终去向（消耗堆/弃牌堆/能力牌消失）
+// 
+// 时序：必须在 card->use() 之后执行
+// ==========================================
+class UseCardAction : public AbstractAction {
+    std::shared_ptr<AbstractCard> targetCard;
+
+public:
+    UseCardAction(std::shared_ptr<AbstractCard> card)
+        : targetCard(card) {}
+
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：抽牌动作 (Draw Cards Action)
+// 
+// 从抽牌堆抽取指定数量的牌
+// 自动触发洗牌和爆牌判定
+// ==========================================
+class DrawCardsAction : public AbstractAction {
+    int amount;
+
+public:
+    DrawCardsAction(int a) : amount(a) {}
+
+    bool update(GameState& state) override;
+};

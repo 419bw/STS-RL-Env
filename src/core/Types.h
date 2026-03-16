@@ -57,7 +57,13 @@ enum class EventType {
     ON_HP_LOST,           // 失去生命值时（无视护甲的掉血，如中毒）
     ON_TURN_START,        // 角色回合开始时 (带参：是谁的回合)
     ON_TURN_END,          // 角色回合结束时 (带参：是谁的回合)
-    ON_ROUND_END          // 整个轮次结束时 (所有带层数的状态统一在这里结算)
+    ON_ROUND_END,         // 整个轮次结束时 (所有带层数的状态统一在这里结算)
+    
+    // 牌库流转事件 (由 DeckSystem 发布)
+    ON_SHUFFLE,           // 洗牌时
+    ON_CARD_DRAWN,        // 抽牌时
+    ON_CARD_DISCARDED,    // 卡牌进入弃牌堆时
+    ON_CARD_EXHAUSTED     // 卡牌进入消耗堆时
 };
 
 // 状态效果类型
