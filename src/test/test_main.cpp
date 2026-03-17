@@ -1,0 +1,20 @@
+#include "src/test/TestFramework.h"
+#include "src/test/TestCardSelection.cpp"
+#include "src/test/TestVulnerableRelic.cpp"
+
+int main() {
+    std::cout << "========================================\n";
+    std::cout << "  STS_CPP 单元测试套件\n";
+    std::cout << "========================================\n";
+    std::cout << "\n";
+    
+    CardSelectionTests::runAllTests();
+    std::cout << "\n";
+    VulnerableRelicTests::runAllTests();
+    
+    std::cout << "\n========================================\n";
+    std::cout << "  所有测试完成\n";
+    std::cout << "========================================\n";
+    
+    return 0;
+}
