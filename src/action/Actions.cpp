@@ -27,30 +27,53 @@ bool DummyAction::update(GameState& state) {
 // - Character::reduceHealthAndBlock 执行扣血
 // - DamageAction 负责日志输出和事件发布
 // ==========================================
-DamageAction::DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a) 
-    : source(src), target(tgt), amount(a) {}
+DamageAction::DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a, 
+                           DamageType type) 
+    : source(src), target(tgt), amount(a), damageType(type) {}
 
 bool DamageAction::update(GameState& state) {
     if (!target->isDead()) {
-        // 1. 调用目标的计算接口，传递 source 进行跨实体状态结算
-        int final_damage = target->calculateFinalDamage(amount, source.get());
+        // 1. 算伤管线 (算出破甲前的最终伤害数值)
+        int final_damage = target->calculateFinalDamage(amount, source.get(), damageType);
         
-        // 2. 如果伤害被状态影响，输出调试信息
-        if (final_damage != amount) {
-            ENGINE_TRACE("伤害计算: " << amount << " -> " << final_damage 
-                         << " (受状态效果影响)");
+        // ==========================================
+        // ★ 第一层广播：ON_ATTACKED (肢体接触)
+        // 只要是物理攻击，不管有没有被格挡，无条件触发！(唤醒荆棘、火焰屏障)
+        // ==========================================
+        if (this->damageType == DamageType::ATTACK) {
+            DamageContext ctx(target.get(), source.get(), this->damageType, final_damage);
+            state.eventBus.publish(EventType::ON_ATTACKED, state, &ctx);
         }
         
-        // 3. 执行最终的扣血
-        target->reduceHealthAndBlock(final_damage);
+        // 2. 破甲管线 (takeDamage 内部会调用 loseHp，并处理鸟居)
+        Character::DamageResult receipt = target->takeDamage(final_damage, damageType);
         
-        // 4. 输出日志
-        STS_LOG(state, target->name << " 受到了 " << final_damage 
-                  << " 点伤害，剩余血量: " << target->current_hp 
-                  << ", 剩余格挡: " << target->block << "\n");
+        // 3. 输出日志
+        if (receipt.damage_taken > 0 || receipt.hp_lost > 0) {
+            STS_LOG(state, target->name << " 受到了 " << final_damage 
+                      << " 点伤害，破甲 " << receipt.damage_taken 
+                      << "，真实掉血 " << receipt.hp_lost 
+                      << "，剩余血量: " << target->current_hp 
+                      << ", 剩余格挡: " << target->block << "\n");
+        }
         
-        // 5. 发布事件
-        state.eventBus.publish(EventType::ON_DAMAGE_TAKEN, state, target.get());
+        // ==========================================
+        // ★ 第二层广播：ON_UNBLOCKED_DAMAGE_TAKEN (护甲击穿)
+        // 只要破甲了就发！(唤醒静电释放、多层护甲)
+        // ==========================================
+        if (receipt.damage_taken > 0) {
+            DamageContext ctx(target.get(), source.get(), this->damageType, receipt.damage_taken);
+            state.eventBus.publish(EventType::ON_UNBLOCKED_DAMAGE_TAKEN, state, &ctx);
+        }
+        
+        // ==========================================
+        // ★ 第三层广播：ON_HP_LOST (肉体流血)
+        // 只有肉体真实流血了才发！(唤醒撕裂、红骷髅)
+        // ==========================================
+        if (receipt.hp_lost > 0) {
+            DamageContext ctx(target.get(), source.get(), this->damageType, receipt.hp_lost);
+            state.eventBus.publish(EventType::ON_HP_LOST, state, &ctx);
+        }
         
         // 死亡判定由 SBA（全局巡视）负责，Action 只管执行
     }
@@ -71,27 +94,17 @@ LoseHpAction::LoseHpAction(std::shared_ptr<Character> t, int a)
 
 bool LoseHpAction::update(GameState& state) {
     if (!target->isDead()) {
-        // 1. 通过计算管线获取最终掉血值
-        int final_amount = target->calculateFinalHpLoss(amount);
+        // 1. 直接命令目标掉血，把底层拦截任务交给 loseHp 自己处理！
+        // 拿到真实掉血的收据
+        int actual_hp_lost = target->loseHp(amount);
         
-        // 2. 如果掉血被拦截，输出调试信息
-        if (final_amount != amount) {
-            ENGINE_TRACE("掉血计算: " << amount << " -> " << final_amount 
-                         << " (受状态/遗物拦截)");
+        // 2. 如果真的掉血了，才发布事件！
+        if (actual_hp_lost > 0) {
+            STS_LOG(state, target->name << " 失去了 " << actual_hp_lost 
+                      << " 点生命值（无视护甲），剩余血量: " << target->current_hp << "\n");
+            DamageContext ctx(target.get(), nullptr, DamageType::HP_LOSS, actual_hp_lost);
+            state.eventBus.publish(EventType::ON_HP_LOST, state, &ctx);
         }
-        
-        // 3. 直接扣除生命值，无视护甲
-        target->current_hp -= final_amount;
-        if (target->current_hp < 0) target->current_hp = 0;
-        
-        // 4. 输出日志
-        STS_LOG(state, target->name << " 失去了 " << final_amount 
-                  << " 点生命值（无视护甲），剩余血量: " << target->current_hp << "\n");
-        
-        // 5. 发布事件
-        state.eventBus.publish(EventType::ON_HP_LOST, state, target.get());
-        
-        // 死亡判定由 SBA（全局巡视）负责
     }
     return true;
 }

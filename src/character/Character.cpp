@@ -3,6 +3,7 @@
 #include "src/core/Queries.h"
 #include "src/utils/Logger.h"
 #include <algorithm>
+#include <cmath>
 
 // ==========================================
 // Character 实现
@@ -18,57 +19,164 @@
 // 可用于 AI 预测、UI 显示等场景
 // ==========================================
 
-int Character::calculateFinalDamage(int base_damage, Character* source) const {
-    float final_dmg = static_cast<float>(base_damage);
-    
-    // 遍历所有 Power，传递 source 进行跨实体状态结算
-    for (const auto& power : powers) {
-        final_dmg = power->modifyDamageTaken(final_dmg, source);
+int Character::calculateFinalDamage(int base_damage, Character* source, 
+                                     DamageType type) const {
+    if (!source) {
+        return base_damage;
     }
     
-    return static_cast<int>(final_dmg);
+    float dmg = static_cast<float>(base_damage);
+    
+    // ==========================================
+    // 阶段 1：攻击者的基础修饰 (加法运算为主)
+    // 例如：【力量】(Strength: dmg += amount)
+    //       【虚弱】(Weak: dmg *= 0.75)
+    // ==========================================
+    source->forEachPower([&](const auto& power) {
+        dmg = power->atDamageGive(dmg, type);
+    });
+    source->forEachRelic([&](const auto& relic) {
+        dmg = relic->atDamageGive(dmg, type);
+    });
+    
+    // ==========================================
+    // 阶段 2：防御者的基础修饰 (乘法运算为主)
+    // 例如：【易伤】(Vulnerable: dmg *= 1.5)
+    // ==========================================
+    this->forEachPower([&](const auto& power) {
+        dmg = power->atDamageReceive(dmg, type, source);
+    });
+    this->forEachRelic([&](const auto& relic) {
+        dmg = relic->atDamageReceive(dmg, type);
+    });
+    
+    // ==========================================
+    // 阶段 3：攻击者的最终修饰 (极限乘法/覆盖)
+    // 例如：【笔尖】遗物 (dmg *= 2)
+    //       观者的【愤怒姿态】(dmg *= 2)
+    // ==========================================
+    source->forEachPower([&](const auto& power) {
+        dmg = power->atDamageFinalGive(dmg, type);
+    });
+    source->forEachRelic([&](const auto& relic) {
+        dmg = relic->atDamageFinalGive(dmg, type);
+    });
+    
+    // ==========================================
+    // 阶段 4：防御者的最终修饰 (强制截断/免伤)
+    // 例如：【无实体】(Intangible: dmg = 1)
+    //       【鸟居】遗物 (如果 dmg <= 5，dmg = 1)
+    //       【钨合金棍】遗物 (dmg -= 1)
+    // ==========================================
+    this->forEachPower([&](const auto& power) {
+        dmg = power->atDamageFinalReceive(dmg, type);
+    });
+    this->forEachRelic([&](const auto& relic) {
+        dmg = relic->atDamageFinalReceive(dmg, type);
+    });
+    
+    // 原版杀戮尖塔在最终结算时，默认向下取整
+    int final_dmg = static_cast<int>(std::floor(dmg));
+    
+    // 伤害绝对不能是负数
+    return std::max(0, final_dmg);
 }
 
 int Character::calculateFinalBlock(int base_block) const {
     float final_block = static_cast<float>(base_block);
+    
+    // 阶段 1：状态修饰 (如敏捷)
     for (const auto& power : powers) {
-        final_block = power->modifyBlockGained(final_block);
+        final_block = power->atBlockGive(final_block);
     }
-    return static_cast<int>(final_block);
+    
+    // 阶段 1：遗物修饰
+    for (const auto& relic : relics) {
+        final_block = relic->atBlockGive(final_block);
+    }
+    
+    // 阶段 2：最终修饰
+    for (const auto& power : powers) {
+        final_block = power->atBlockFinalGive(final_block);
+    }
+    for (const auto& relic : relics) {
+        final_block = relic->atBlockFinalGive(final_block);
+    }
+    
+    return static_cast<int>(std::floor(final_block));
 }
 
-int Character::calculateFinalHpLoss(int base_amount) const {
-    int final_amount = base_amount;
+// ==========================================
+// 执行接口 (修改状态)
+// 
+// 设计原则：
+// - takeDamage: 处理伤害（破甲 → 鸟居 → loseHp）
+// - loseHp: 统一掉血入口（状态拦截 → 遗物拦截 → 扣血）
+// 
+// 所有掉血最终都通过 loseHp 执行
+// ==========================================
+
+Character::DamageResult Character::takeDamage(int damage, DamageType type) {
+    DamageResult result;
     
-    // 1. 状态拦截（比如【无实体】会在这里把 final_amount 强行改成 1）
+    if (damage <= 0) {
+        return result;
+    }
+    
+    if (block >= damage) {
+        // 护甲完全吸收
+        block -= damage;
+        result.damage_taken = 0;
+        result.hp_lost = 0;
+        return result;
+    }
+    
+    // 计算穿透护甲后的破甲伤害
+    result.damage_taken = damage - block;
+    block = 0;
+    
+    // 鸟居：只拦截伤害类型的掉血
+    int hp_to_lose = result.damage_taken;
+    for (const auto& relic : relics) {
+        hp_to_lose = relic->onActualHpLoss(hp_to_lose, type);
+    }
+    
+    // 确保扣血值不为负
+    if (hp_to_lose < 0) hp_to_lose = 0;
+    
+    // 通过 loseHp 进行最终扣血（钨合金棍在这里拦截）
+    result.hp_lost = loseHp(hp_to_lose);
+    
+    return result;
+}
+
+int Character::loseHp(int amount) {
+    if (amount <= 0) {
+        return 0;
+    }
+    
+    int final_amount = amount;
+    
+    // 1. 状态拦截（无实体强制变 1 等）
     for (const auto& power : powers) {
         final_amount = power->modifyHpLoss(final_amount);
     }
     
-    // 2. 遗物拦截（比如玩家的【钨钢棍】会在这里把 final_amount 减 1）
+    // 2. 遗物拦截（钨合金棍减 1 等）
     for (const auto& relic : relics) {
         final_amount = relic->modifyHpLoss(final_amount);
     }
     
     // 兜底保护：掉血不可能变成回血
-    return std::max(0, final_amount);
-}
-
-// ==========================================
-// 执行接口 (修改状态)
-// ==========================================
-
-int Character::reduceHealthAndBlock(int damage) {
-    if (block >= damage) {
-        block -= damage;
-        return 0;  // 格挡完全吸收，没有损失 HP
-    } else {
-        int hp_lost = damage - block;
-        block = 0;
-        current_hp -= hp_lost;
+    final_amount = std::max(0, final_amount);
+    
+    // 真实扣血
+    if (final_amount > 0) {
+        current_hp -= final_amount;
         if (current_hp < 0) current_hp = 0;
-        return hp_lost;  // 返回实际损失的 HP
     }
+    
+    return final_amount;  // 返回真实掉血的收据
 }
 
 int Character::addBlockFinal(int amount) {

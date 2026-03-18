@@ -39,20 +39,31 @@ public:
     virtual ~Character() = default;
 
     // ==========================================
+    // 伤害结果结构体
+    // 用于 takeDamage 返回详细的战损信息
+    // ==========================================
+    struct DamageResult {
+        int damage_taken;  // 破甲伤害（穿透护甲的伤害）
+        int hp_lost;       // 真实掉血（扣除的生命值）
+        
+        DamageResult() : damage_taken(0), hp_lost(0) {}
+        DamageResult(int dt, int hp) : damage_taken(dt), hp_lost(hp) {}
+    };
+
+    // ==========================================
     // 纯计算接口 (const 方法，不修改状态)
     // 可用于 AI 预测、UI 显示等场景
     // ==========================================
     
-    // 计算最终伤害值（考虑易伤等状态修饰）
-    // source: 伤害来源（攻击者），用于跨实体状态结算
-    int calculateFinalDamage(int base_damage, Character* source = nullptr) const;
+    // 四阶段伤害计算管线
+    // base_damage: 基础伤害值
+    // source: 攻击者（nullptr 表示环境伤害）
+    // type: 伤害类型
+    int calculateFinalDamage(int base_damage, Character* source = nullptr, 
+                             DamageType type = DamageType::ATTACK) const;
     
     // 计算最终获得的格挡值（考虑敏捷等状态修饰）
     int calculateFinalBlock(int base_block) const;
-    
-    // 计算最终掉血值（考虑状态和遗物拦截）
-    // 用于 LoseHpAction（中毒、献祭等）
-    int calculateFinalHpLoss(int base_amount) const;
 
     // ==========================================
     // 查询表单处理接口（重载）
@@ -69,8 +80,14 @@ public:
     // 执行接口 (修改状态)
     // ==========================================
     
-    // 扣除格挡和血量，返回实际损失的 HP
-    int reduceHealthAndBlock(int damage);
+    // 统一掉血入口 1：受到伤害（先扣护甲再扣血）
+    // 返回 DamageResult 包含破甲伤害和真实掉血
+    DamageResult takeDamage(int damage, DamageType type = DamageType::ATTACK);
+    
+    // 统一掉血入口 2：直接失去生命值（无视护甲）
+    // 用于中毒、献祭等效果
+    // 返回实际损失的 HP
+    int loseHp(int amount);
 
     // 增加格挡值，返回实际获得的格挡
     int addBlockFinal(int amount);

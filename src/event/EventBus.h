@@ -19,8 +19,8 @@ class EventBus {
 private:
     // 监听器列表：事件类型 -> 回调函数列表
     // 回调返回 true 表示继续监听，false 表示移除
-    // EventType 共 21 种，数组大小对应
-    std::vector<std::function<bool(GameState&, void*)>> listeners[21]; 
+    // EventType 共 23 种，数组大小对应
+    std::vector<std::function<bool(GameState&, void*)>> listeners[23]; 
 
 public:
     // 订阅事件

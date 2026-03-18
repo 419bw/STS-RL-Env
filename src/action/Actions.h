@@ -29,8 +29,10 @@ class DamageAction : public AbstractAction {
     std::shared_ptr<Character> source;  // 伤害来源（攻击者）
     std::shared_ptr<Character> target;  // 伤害目标
     int amount;
+    DamageType damageType;              // 伤害类型
 public:
-    DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a);
+    DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a, 
+                 DamageType type = DamageType::ATTACK);
     bool update(GameState& state) override;
 };
 

@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include "src/core/ForwardDeclarations.h"
+#include "src/core/Types.h"
 
 // ==========================================
 // 遗物基类 (AbstractRelic)
@@ -50,11 +51,69 @@ public:
     // 默认实现为"什么都不做"，直接返回原值
     // ==========================================
     
+    // ==========================================
+    // 四阶段伤害计算钩子 (Pipeline Hooks)
+    // ==========================================
+    
+    // 阶段1: 攻击者造成伤害时 (纸蛙)
+    virtual float atDamageGive(float damage, DamageType type) {
+        return damage;
+    }
+    
+    // 阶段2: 防御者受到伤害时 (奇数蘑菇)
+    virtual float atDamageReceive(float damage, DamageType type) {
+        return damage;
+    }
+    
+    // 阶段3: 攻击者最终伤害修饰 (笔尖)
+    virtual float atDamageFinalGive(float damage, DamageType type) {
+        return damage;
+    }
+    
+    // 阶段4: 防御者最终伤害修饰 (无实体)
+    virtual float atDamageFinalReceive(float damage, DamageType type) {
+        return damage;
+    }
+    
+    // ==========================================
+    // 实际扣血钩子 (在护甲之后)
+    // 
+    // 与 atDamageFinalReceive 的区别：
+    // - atDamageFinalReceive: 修饰伤害值（护甲之前）
+    // - onActualHpLoss: 修饰实际扣血值（护甲之后）
+    // 
+    // 例如：
+    // - 无实体: atDamageFinalReceive 把伤害变成 1
+    // - 鸟居: onActualHpLoss 把扣血变成 1（只在有实际扣血时）
+    // - 钨合金棍: onActualHpLoss 把扣血减 1
+    // ==========================================
+    
+    // 实际扣血时触发（护甲之后）
+    // 返回实际扣血值
+    virtual int onActualHpLoss(int hpLoss, DamageType type) {
+        return hpLoss;
+    }
+    
+    // ==========================================
+    // 格挡计算钩子
+    // ==========================================
+    
+    // 阶段1: 获得格挡时
+    virtual float atBlockGive(float block) {
+        return block;
+    }
+    
+    // 阶段2: 最终格挡修饰
+    virtual float atBlockFinalGive(float block) {
+        return block;
+    }
+    
+    // ==========================================
+    // 掉血计算钩子 (HP_LOSS 类型)
+    // ==========================================
+    
     // 拦截掉血（如钨钢棍减少 1 点掉血）
     virtual int modifyHpLoss(int amount) const { return amount; }
-    
-    // 拦截伤害（如某些遗物增加伤害）
-    virtual float modifyDamage(float damage) const { return damage; }
 
     // ==========================================
     // 3. 查询表单处理 (Zero-Overhead Query)

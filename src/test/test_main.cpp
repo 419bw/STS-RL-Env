@@ -1,6 +1,7 @@
 #include "src/test/TestFramework.h"
 #include "src/test/TestCardSelection.cpp"
 #include "src/test/TestVulnerableRelic.cpp"
+#include "src/test/TestDamagePipeline.cpp"
 
 int main() {
     std::cout << "========================================\n";
@@ -11,6 +12,10 @@ int main() {
     CardSelectionTests::runAllTests();
     std::cout << "\n";
     VulnerableRelicTests::runAllTests();
+    std::cout << "\n";
+    DamagePipelineTests::runAllTests();
+    std::cout << "\n";
+    BlockPipelineTests::runAllTests();
     
     std::cout << "\n========================================\n";
     std::cout << "  所有测试完成\n";

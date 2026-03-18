@@ -53,8 +53,9 @@ enum class EventType {
     ON_CARD_PLAYING,      // 准备打出牌时
     ON_CARD_PLAYED,       // 打出牌后
     ON_ATTACK,            // 攻击时
-    ON_DAMAGE_TAKEN,      // 受到伤害时
-    ON_HP_LOST,           // 失去生命值时（无视护甲的掉血，如中毒）
+    ON_ATTACKED,          // 被攻击时（肢体接触，不管有没有格挡，唤醒荆棘、火焰屏障）
+    ON_UNBLOCKED_DAMAGE_TAKEN,  // 护甲击穿时（唤醒静电释放、多层护甲）
+    ON_HP_LOST,           // 失去生命值时（肉体流血，唤醒撕裂、红骷髅）
     ON_TURN_START,        // 角色回合开始时 (带参：是谁的回合)
     ON_TURN_END,          // 角色回合结束时 (带参：是谁的回合)
     ON_ROUND_END,         // 整个轮次结束时 (所有带层数的状态统一在这里结算)
@@ -70,6 +71,37 @@ enum class EventType {
 enum class PowerType { 
     BUFF,    // 增益
     DEBUFF   // 减益
+};
+
+// 伤害类型
+enum class DamageType {
+    ATTACK,     // 攻击伤害（攻击牌、怪物攻击，受力量/虚弱/易伤影响）
+    THORNS,     // 荆棘伤害（不受力量/虚弱影响，但受护甲影响）
+    HP_LOSS     // 直接掉血（中毒、献祭等，无视护甲，只走最终阶段）
+};
+
+// 前向声明
+class Character;
+
+// 伤害信息结构体（事件广播用的快递盒）
+struct DamageInfo {
+    Character* source;      // 肇事者
+    DamageType type;        // 伤害类型
+    int amount;             // 具体数值
+    
+    DamageInfo() : source(nullptr), type(DamageType::ATTACK), amount(0) {}
+    DamageInfo(Character* src, DamageType t, int a) : source(src), type(t), amount(a) {}
+};
+
+// 伤害事件上下文（EventBus 发布时用的完整上下文）
+struct DamageContext {
+    Character* target;      // 受害者
+    DamageInfo info;        // 伤害信息
+    
+    DamageContext() : target(nullptr) {}
+    DamageContext(Character* tgt, DamageInfo i) : target(tgt), info(i) {}
+    DamageContext(Character* tgt, Character* src, DamageType t, int a) 
+        : target(tgt), info(src, t, a) {}
 };
 
 // ==========================================

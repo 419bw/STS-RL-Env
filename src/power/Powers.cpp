@@ -10,33 +10,35 @@
 // ==========================================
 // VulnerablePower 实现
 // 
-// 查询表单系统：
-// - Power 创建查询表单
-// - 递给攻击者和受击者的遗物填表
-// - 最终读取表单结果结算
-// - 零开销抽象，栈内存创建表单
+// 四阶段管线设计：
+// - 在阶段2 (atDamageReceive) 应用易伤倍率
+// - 遗物的修饰通过管线自动处理
 // ==========================================
 
-float VulnerablePower::modifyDamageTaken(float damage, Character* source) {
-    // 层数为 0 时不再生效
+float VulnerablePower::atDamageReceive(float damage, DamageType type, Character* source) {
+    // 易伤只对攻击伤害生效，荆棘和直接掉血不受影响
+    if (type != DamageType::ATTACK) {
+        return damage;
+    }
+    
     if (getAmount() <= 0) {
         return damage;
     }
     
-    // 1. 拿出一张崭新的查询表单（栈内存，零开销）
+    // 使用表单系统计算易伤倍率
+    // 这样遗物可以修改倍率（如纸蛙+25%，蘑菇-25%）
     VulnerableMultiplierQuery query{source, getOwner().get()};
     
-    // 2. 把表单递给攻击者，让他看看有没有什么要改的（触发纸蛙）
+    // 让攻击者的遗物填表（如纸蛙）
     if (source) {
         source->processQuery(query);
     }
     
-    // 3. 把表单递给受击者，让他看看有没有什么要改的（触发蘑菇）
+    // 让受击者的遗物填表（如奇数蘑菇）
     if (getOwner()) {
         getOwner()->processQuery(query);
     }
     
-    // 4. 结算收工！
     float final_damage = damage * query.multiplier;
     ENGINE_TRACE("[" << name << "] 伤害修饰: " << damage << " -> " << final_damage 
                  << " (x" << query.multiplier << " 倍率)");

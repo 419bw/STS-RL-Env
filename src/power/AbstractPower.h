@@ -61,24 +61,52 @@ public:
     virtual void onRemove(GameState& state) {}
     
     // ==========================================
-    // 数值修饰接口（数据驱动）
-    // source: 伤害来源（攻击者），用于跨实体状态结算
+    // 四阶段伤害计算钩子 (Pipeline Hooks)
+    // 
+    // 阶段1: atDamageGive - 攻击者基础修饰 (加法为主，如力量)
+    // 阶段2: atDamageReceive - 防御者基础修饰 (乘法为主，如易伤)
+    // 阶段3: atDamageFinalGive - 攻击者最终修饰 (极限乘法，如笔尖)
+    // 阶段4: atDamageFinalReceive - 防御者最终修饰 (截断，如无实体)
     // ==========================================
     
-    // 修改承受的伤害（如易伤）
-    virtual float modifyDamageTaken(float damage, Character* source = nullptr) { 
-        return damage; 
+    // 阶段1: 攻击者造成伤害时 (力量、虚弱)
+    virtual float atDamageGive(float damage, DamageType type) {
+        return damage;
     }
     
-    // 修改造成的伤害（如虚弱）
-    virtual float modifyDamageDealt(float damage, Character* target = nullptr) { 
-        return damage; 
+    // 阶段2: 防御者受到伤害时 (易伤)
+    // source: 攻击者，用于易伤倍率计算时让攻击者遗物参与
+    virtual float atDamageReceive(float damage, DamageType type, Character* source = nullptr) {
+        return damage;
     }
     
-    // 修改获得的格挡（如敏捷）
-    virtual float modifyBlockGained(float block) { 
-        return block; 
+    // 阶段3: 攻击者最终伤害修饰 (笔尖、愤怒姿态)
+    virtual float atDamageFinalGive(float damage, DamageType type) {
+        return damage;
     }
+    
+    // 阶段4: 防御者最终伤害修饰 (无实体、鸟居)
+    virtual float atDamageFinalReceive(float damage, DamageType type) {
+        return damage;
+    }
+    
+    // ==========================================
+    // 格挡计算钩子 (只计算自己)
+    // ==========================================
+    
+    // 阶段1: 获得格挡时 (敏捷)
+    virtual float atBlockGive(float block) {
+        return block;
+    }
+    
+    // 阶段2: 最终格挡修饰
+    virtual float atBlockFinalGive(float block) {
+        return block;
+    }
+    
+    // ==========================================
+    // 掉血计算钩子 (用于 HP_LOSS 类型)
+    // ==========================================
     
     // 修改掉血量（如无实体状态限制掉血为 1）
     virtual int modifyHpLoss(int amount) const { 
