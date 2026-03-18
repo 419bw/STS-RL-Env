@@ -114,20 +114,25 @@ public:
 // 支持区间选择：
 // - "必须选1张" -> minSelection=1, maxSelection=1
 // - "最多选2张" -> minSelection=0, maxSelection=2
+// 
+// 时序问题解决方案：
+// - 使用 PileType 替代 sourcePile
+// - 创建时只记录牌堆类型
+// - 执行时实时获取最新牌堆状态
 // ==========================================
 class RequestCardSelectionAction : public AbstractAction {
-    std::vector<std::shared_ptr<AbstractCard>> sourcePile;
+    PileType sourcePileType;
     SelectionPurpose purpose;
     int minSelection;
     int maxSelection;
 
 public:
     RequestCardSelectionAction(
-        const std::vector<std::shared_ptr<AbstractCard>>& pile,
+        PileType pileType,
         SelectionPurpose p,
         int minAmt = 1,
         int maxAmt = 1
-    ) : sourcePile(pile), purpose(p), minSelection(minAmt), maxSelection(maxAmt) {}
+    ) : sourcePileType(pileType), purpose(p), minSelection(minAmt), maxSelection(maxAmt) {}
 
     bool update(GameState& state) override;
 };

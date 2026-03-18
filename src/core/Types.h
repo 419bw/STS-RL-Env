@@ -95,6 +95,20 @@ enum class SelectionPurpose {
 };
 
 // ==========================================
+// 牌堆类型枚举 (Pile Type)
+// 用于 RequestCardSelectionAction 实时获取牌堆
+// 解决时序问题：创建时只记录类型，执行时获取最新状态
+// ==========================================
+
+enum class PileType {
+    HAND,           // 手牌
+    DRAW_PILE,      // 抽牌堆
+    DISCARD_PILE,   // 弃牌堆
+    EXHAUST_PILE,   // 消耗堆
+    LIMBO           // 滞留区
+};
+
+// ==========================================
 // 选牌上下文结构体 (Card Selection Context)
 // 
 // 封装所有选牌相关状态，使用 optional 管理

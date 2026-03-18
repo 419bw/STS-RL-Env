@@ -233,39 +233,61 @@ bool RemoveSpecificPowerAction::update(GameState& state) {
 // RequestCardSelectionAction 实现
 // 
 // 核心职责：
-// 1. 切换状态，冻结引擎
-// 2. 写入选牌上下文（使用 CardSelectionContext）
-// 3. 返回 true，将自己踢出队列
+// 1. 根据 PileType 实时获取牌堆（解决时序问题）
+// 2. 切换状态，冻结引擎
+// 3. 写入选牌上下文（使用 CardSelectionContext）
+// 4. 返回 true，将自己踢出队列
 // 
 // 引擎由于 Phase 改变，将自动暂停推演
 // ==========================================
 bool RequestCardSelectionAction::update(GameState& state) {
-    if (sourcePile.empty()) {
+    // 1. 根据 PileType 实时获取牌堆
+    std::vector<std::shared_ptr<AbstractCard>>* pile = nullptr;
+    
+    switch (sourcePileType) {
+        case PileType::HAND:
+            pile = &state.hand;
+            break;
+        case PileType::DRAW_PILE:
+            pile = &state.drawPile;
+            break;
+        case PileType::DISCARD_PILE:
+            pile = &state.discardPile;
+            break;
+        case PileType::EXHAUST_PILE:
+            pile = &state.exhaustPile;
+            break;
+        case PileType::LIMBO:
+            pile = &state.limbo;
+            break;
+    }
+    
+    if (!pile || pile->empty()) {
         return true;  // 无牌可选，直接跳过
     }
 
-    // 1. 切换状态，冻结引擎
+    // 2. 切换状态，冻结引擎
     state.currentPhase = StatePhase::WAITING_FOR_CARD_SELECTION;
     
-    // 2. 写入上下文（使用 CardSelectionContext）
+    // 3. 写入上下文（使用 CardSelectionContext）
     CardSelectionContext ctx;
-    ctx.choices = sourcePile;
+    ctx.choices = *pile;
     ctx.purpose = purpose;
-    ctx.minSelection = std::min(this->minSelection, static_cast<int>(sourcePile.size()));
-    ctx.maxSelection = std::min(this->maxSelection, static_cast<int>(sourcePile.size()));
+    ctx.minSelection = std::min(this->minSelection, static_cast<int>(pile->size()));
+    ctx.maxSelection = std::min(this->maxSelection, static_cast<int>(pile->size()));
     state.selectionCtx = ctx;
 
-    // 3. 输出日志
+    // 4. 输出日志
     if (ctx.minSelection == ctx.maxSelection) {
         STS_LOG(state, "[选牌请求] 请选择 " << ctx.minSelection << " 张牌\n");
     } else {
         STS_LOG(state, "[选牌请求] 请选择 " << ctx.minSelection << "-" << ctx.maxSelection << " 张牌\n");
     }
-    for (size_t i = 0; i < sourcePile.size(); ++i) {
-        STS_LOG(state, "  [" << i << "] " << sourcePile[i]->id << "\n");
+    for (size_t i = 0; i < pile->size(); ++i) {
+        STS_LOG(state, "  [" << i << "] " << (*pile)[i]->id << "\n");
     }
 
-    // 4. 返回 true，将自己踢出队列
+    // 5. 返回 true，将自己踢出队列
     // 此时引擎由于 Phase 改变，将自动暂停推演
     return true;
 }
