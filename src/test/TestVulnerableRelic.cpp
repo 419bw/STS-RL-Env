@@ -280,18 +280,35 @@ void test_VulnerableStacking_IncreasesDuration() {
         "Second vulnerable should stack to 5");
 }
 
-void test_VulnerableJustApplied_ProtectedFromReduction() {
+void test_VulnerableJustApplied_NotProtectedWhenPlayerApplies() {
     GameState state = createTestState();
     CombatFlow flow;
-    
+
     auto monster = state.monsters[0];
-    
+
     auto vulnerablePower = std::make_shared<VulnerablePower>(2);
     state.addAction(std::make_unique<ApplyPowerAction>(state.player, monster, vulnerablePower));
     ActionSystem::executeUntilBlocked(state, flow);
-    
-    TEST_ASSERT(monster->getPower("易伤")->isJustApplied(), 
-        "Just applied vulnerable should have protection flag");
+
+    TEST_ASSERT(!monster->getPower("易伤")->isJustApplied(),
+        "Player-applied vulnerable should NOT have protection flag (only monster-applied during enemy turn has protection)");
+}
+
+void test_VulnerableJustApplied_ProtectedWhenMonsterAppliesDuringEnemyTurn() {
+    GameState state = createTestState();
+    CombatFlow flow;
+
+    state.isPlayerTurn = false;
+
+    auto player = state.player;
+    auto monster = state.monsters[0];
+
+    auto vulnerablePower = std::make_shared<VulnerablePower>(2);
+    state.addAction(std::make_unique<ApplyPowerAction>(monster, player, vulnerablePower));
+    ActionSystem::executeUntilBlocked(state, flow);
+
+    TEST_ASSERT(player->getPower("易伤")->isJustApplied(),
+        "Monster-applied vulnerable during enemy turn SHOULD have protection flag");
 }
 
 void test_QuerySystem_ZeroOverhead() {
@@ -315,20 +332,26 @@ void test_RelicOnlyAffectsOwnSide() {
     GameState state = createTestState();
     CombatFlow flow;
     
+    // 玩家拥有【纸蛙】（只加成自己打别人的易伤）
     auto attackerRelic = std::make_shared<TestAttackerBuffRelic>();
     state.player->addRelic(attackerRelic, state);
     
-    auto monster = state.monsters[0];
-    
-    int initialHp = monster->current_hp;
-    
-    state.addAction(std::make_unique<DamageAction>(state.player, monster, 10));
+    // 玩家被挂上了【易伤】
+    auto vulnerablePower = std::make_shared<VulnerablePower>(2);
+    state.addAction(std::make_unique<ApplyPowerAction>(state.monsters[0], state.player, vulnerablePower));
     ActionSystem::executeUntilBlocked(state, flow);
     
-    // 没有易伤状态，遗物的易伤倍率修改不生效
-    int actualDamage = initialHp - monster->current_hp;
-    TEST_ASSERT_EQ(actualDamage, 10, 
-        "Without vulnerable, relic's vulnerable multiplier bonus has no effect");
+    int initialHp = state.player->current_hp;
+    
+    // 怪物打玩家 10 点伤害
+    state.addAction(std::make_unique<DamageAction>(state.monsters[0], state.player, 10));
+    ActionSystem::executeUntilBlocked(state, flow);
+    
+    int actualDamage = initialHp - state.player->current_hp;
+    
+    // 预期伤害：怪物打玩家，触发基础易伤 (10 * 1.5 = 15)。
+    // 玩家身上的【纸蛙】不应该生效（如果是 17 就说明遗物敌我不分出 Bug 了）。
+    TEST_ASSERT_EQ(actualDamage, 15, "Attacker relic should not trigger when its owner is the defender");
 }
 
 void test_DamageCalculation_WithBlock() {
@@ -369,7 +392,8 @@ void runAllTests() {
     RUN_TEST(suite, test_NoVulnerable_NoMultiplierApplied);
     RUN_TEST(suite, test_VulnerableAffectsActualDamage);
     RUN_TEST(suite, test_VulnerableStacking_IncreasesDuration);
-    RUN_TEST(suite, test_VulnerableJustApplied_ProtectedFromReduction);
+    RUN_TEST(suite, test_VulnerableJustApplied_NotProtectedWhenPlayerApplies);
+    RUN_TEST(suite, test_VulnerableJustApplied_ProtectedWhenMonsterAppliesDuringEnemyTurn);
     RUN_TEST(suite, test_QuerySystem_ZeroOverhead);
     RUN_TEST(suite, test_RelicOnlyAffectsOwnSide);
     RUN_TEST(suite, test_DamageCalculation_WithBlock);
