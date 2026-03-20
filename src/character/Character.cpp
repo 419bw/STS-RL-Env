@@ -262,7 +262,10 @@ std::shared_ptr<AbstractPower> Character::getPower(const std::string& powerName)
     return nullptr;
 }
 
-void Character::clearPowers() {
+void Character::clearPowers(GameState& state) {
+    for (auto& power : powers) {
+        power->onRemove(state);
+    }
     powers.clear();
 }
 

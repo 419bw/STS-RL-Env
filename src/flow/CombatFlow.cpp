@@ -24,6 +24,9 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
         if (monster->isDead()) {
             // 播报死亡（只播报一次）
             if (!monster->deathReported) {
+                // 清理死亡怪物身上的所有 power
+                monster->clearPowers(state);
+
                 STS_LOG(state, "\n>>> [死亡] " << monster->name << " 被击败！ <<<\n");
                 monster->deathReported = true;
                 ENGINE_TRACE("[SBA] " << monster->name << " 已死亡！");

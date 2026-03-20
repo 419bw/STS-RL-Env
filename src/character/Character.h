@@ -124,7 +124,7 @@ public:
     size_t getPowerCount() const { return powers.size(); }
     
     // 清空所有状态
-    void clearPowers();
+    void clearPowers(GameState& state);
 
     // 遍历状态的只读访问（用于计算层遍历）
     // 使用回调函数模式，避免暴露内部容器
