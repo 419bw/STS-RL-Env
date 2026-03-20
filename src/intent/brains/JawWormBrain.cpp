@@ -40,16 +40,16 @@ Intent JawWormBrain::decide(GameState& state, Monster* owner) {
     }
 
     int randomNum = std::uniform_int_distribution<int>(0, 99)(state.rng.monsterRng);
-    Intent intent = decideNextMove(state, randomNum);
+    Intent intent = decideNextMove(state, owner, randomNum);
     recordMoveId(intent.move_id);
     return intent;
 }
 
-Intent JawWormBrain::decideNextMove(GameState& state, int randomNum) {
+Intent JawWormBrain::decideNextMove(GameState& state, Monster* owner, int randomNum) {
     if (randomNum < 25) {
         if (lastMove(CHOMP)) {
             if (std::bernoulli_distribution(PROB_BELLOW_VS_THRASH)(state.rng.monsterRng)) {
-                return Intent{IntentType::BUFF, 0, 1, bellowBlock, state.player.get(), true, BELLOW, "Bellow"};
+                return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
             } else {
                 return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, state.player.get(), true, THRASH, "Thrash"};
             }
@@ -61,7 +61,7 @@ Intent JawWormBrain::decideNextMove(GameState& state, int randomNum) {
             if (std::bernoulli_distribution(PROB_CHOMP_VS_BELLOW_FROM_THRASH)(state.rng.monsterRng)) {
                 return Intent{IntentType::ATTACK, chompDmg, 1, 0, state.player.get(), true, CHOMP, "Chomp"};
             } else {
-                return Intent{IntentType::BUFF, 0, 1, bellowBlock, state.player.get(), true, BELLOW, "Bellow"};
+                return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
             }
         } else {
             return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, state.player.get(), true, THRASH, "Thrash"};
@@ -74,7 +74,7 @@ Intent JawWormBrain::decideNextMove(GameState& state, int randomNum) {
                 return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, state.player.get(), true, THRASH, "Thrash"};
             }
         } else {
-            return Intent{IntentType::BUFF, 0, 1, bellowBlock, state.player.get(), true, BELLOW, "Bellow"};
+            return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
         }
     }
 }

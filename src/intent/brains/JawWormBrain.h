@@ -16,7 +16,7 @@ private:
     int thrashBlock = 5;
     bool firstMove = true;
 
-    Intent decideNextMove(GameState& state, int randomNum);
+    Intent decideNextMove(GameState& state, Monster* owner, int randomNum);
 
 public:
     JawWormBrain(int ascensionLevel = 0);
