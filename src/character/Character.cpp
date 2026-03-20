@@ -84,25 +84,25 @@ int Character::calculateFinalDamage(int base_damage, Character* source,
 
 int Character::calculateFinalBlock(int base_block) const {
     float final_block = static_cast<float>(base_block);
-    
+
     // 阶段 1：状态修饰 (如敏捷)
-    for (const auto& power : powers) {
+    forEachPower([&](const auto& power) {
         final_block = power->atBlockGive(final_block);
-    }
-    
+    });
+
     // 阶段 1：遗物修饰
-    for (const auto& relic : relics) {
+    forEachRelic([&](const auto& relic) {
         final_block = relic->atBlockGive(final_block);
-    }
-    
+    });
+
     // 阶段 2：最终修饰
-    for (const auto& power : powers) {
+    forEachPower([&](const auto& power) {
         final_block = power->atBlockFinalGive(final_block);
-    }
-    for (const auto& relic : relics) {
+    });
+    forEachRelic([&](const auto& relic) {
         final_block = relic->atBlockFinalGive(final_block);
-    }
-    
+    });
+
     return static_cast<int>(std::floor(final_block));
 }
 

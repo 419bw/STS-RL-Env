@@ -253,6 +253,7 @@ public:
     Monster(std::string n, int hp);
     void rollIntent(GameState& state);
     void setBrain(IntentBrainPtr b);
+    IntentBrainPtr getBrain() const { return brain; }
 
     const Intent& getRealIntent() const { return currentIntent; }
     Intent getVisibleIntent(const GameState& state) const;

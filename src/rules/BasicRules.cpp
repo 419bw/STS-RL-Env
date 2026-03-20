@@ -24,6 +24,13 @@ void BasicRules::registerRules(GameState& state) {
     // 规则 1：战斗开始时 - 洗牌 + 刷新怪物意图
     state.eventBus.subscribe(EventType::PHASE_BATTLE_START,
         [](GameState& gs, void*) -> bool {
+            // 重置所有怪物的 brain 状态（通过 Action 队列）
+            for (auto& monster : gs.monsters) {
+                if (!monster->isDead()) {
+                    gs.addAction(std::make_unique<ResetBrainAction>(monster.get()));
+                }
+            }
+
             STS_LOG(gs, "    [BasicRules] 战斗开始 -> 洗牌 + 刷新怪物意图\n");
             gs.addAction(std::make_unique<ShuffleDiscardIntoDrawAction>());
             gs.addAction(std::make_unique<RollAllMonsterIntentsAction>());

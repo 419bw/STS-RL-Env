@@ -7,16 +7,21 @@ AdaptiveBrain& AdaptiveBrain::addRule(IntentEvaluator eval) {
 }
 
 Intent AdaptiveBrain::decide(GameState& state, Monster* owner) {
+    Character* playerPtr = state.player ? state.player.get() : nullptr;
+
     for (auto& eval : evaluators) {
-        if (auto intentOpt = eval(state, owner, state.player.get())) {
+        if (auto intentOpt = eval(state, owner, playerPtr)) {
             recordMoveId(intentOpt->move_id);
-            if (!intentOpt->target) {
-                intentOpt->target = state.player.get();
+            if (!intentOpt->target && playerPtr) {
+                intentOpt->target = playerPtr;
             }
             return *intentOpt;
         }
     }
+
     Intent intent{IntentType::DEFEND, 0, 1, 0, nullptr};
-    intent.target = state.player.get();
+    if (playerPtr) {
+        intent.target = playerPtr;
+    }
     return intent;
 }

@@ -6,6 +6,7 @@
 #include "src/card/AbstractCard.h"
 #include "src/system/DeckSystem.h"
 #include "src/utils/Logger.h"
+#include "src/intent/IntentBrain.h"
 #include <iostream>
 #include <algorithm>
 
@@ -421,10 +422,31 @@ bool ShuffleDiscardIntoDrawAction::update(GameState& state) {
 
 // ==========================================
 // DiscardHandAction 实现
-// 
+//
 // 委托给 DeckSystem
 // ==========================================
 bool DiscardHandAction::update(GameState& state) {
     DeckSystem::discardHand(state);
+    return true;
+}
+
+// ==========================================
+// ResetBrainAction 实现
+//
+// 防御性检查：
+// - monster 指针有效性
+// - isDead() 检查
+// - brain 指针有效性
+// ==========================================
+ResetBrainAction::ResetBrainAction(Monster* m) : monster(m) {}
+
+bool ResetBrainAction::update(GameState& state) {
+    if (!monster || monster->isDead()) {
+        return true;
+    }
+    auto brain = monster->getBrain();
+    if (brain) {
+        brain->reset();
+    }
     return true;
 }

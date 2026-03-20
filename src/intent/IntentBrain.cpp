@@ -3,6 +3,10 @@
 
 void IntentBrain::initializeStats(int ascensionLevel) {}
 
+void IntentBrain::reset() {
+    moveIdHistory.clear();
+}
+
 bool IntentBrain::lastMove(int moveId) const {
     if (moveIdHistory.empty()) return false;
     return moveIdHistory.back() == moveId;

@@ -359,7 +359,8 @@ void test_DamageCalculation_WithBlock() {
     CombatFlow flow;
     
     auto monster = state.monsters[0];
-    monster->block = 5;
+    state.addAction(std::make_unique<GainBlockAction>(monster, 5));
+    ActionSystem::executeUntilBlocked(state, flow);
     
     auto vulnerablePower = std::make_shared<VulnerablePower>(2);
     state.addAction(std::make_unique<ApplyPowerAction>(state.player, monster, vulnerablePower));

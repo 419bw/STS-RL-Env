@@ -311,7 +311,8 @@ void test_ToriiRelic_NoTriggerWithBlock() {
     state.player->addRelic(toriiRelic, state);
     
     // 给玩家 10 点护甲
-    state.player->block = 10;
+    state.addAction(std::make_unique<GainBlockAction>(state.player, 10));
+    ActionSystem::executeUntilBlocked(state, flow);
     int initialHp = state.player->current_hp;
     
     // 受到 5 点伤害，护甲完全吸收
@@ -334,7 +335,8 @@ void test_ToriiRelic_TriggerAfterBlock() {
     state.player->addRelic(toriiRelic, state);
     
     // 给玩家 3 点护甲
-    state.player->block = 3;
+    state.addAction(std::make_unique<GainBlockAction>(state.player, 3));
+    ActionSystem::executeUntilBlocked(state, flow);
     int initialHp = state.player->current_hp;
     
     // 受到 8 点伤害，护甲吸收 3，实际扣血 5
@@ -401,7 +403,8 @@ void test_TungstenRod_NoTriggerWithBlock() {
     state.player->addRelic(tungstenRod, state);
     
     // 给玩家 10 点护甲
-    state.player->block = 10;
+    state.addAction(std::make_unique<GainBlockAction>(state.player, 10));
+    ActionSystem::executeUntilBlocked(state, flow);
     int initialHp = state.player->current_hp;
     
     // 受到 5 点伤害，护甲完全吸收
