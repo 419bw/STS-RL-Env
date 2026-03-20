@@ -430,23 +430,15 @@ bool DiscardHandAction::update(GameState& state) {
     return true;
 }
 
-// ==========================================
-// ResetBrainAction 实现
-//
-// 防御性检查：
-// - monster 指针有效性
-// - isDead() 检查
-// - brain 指针有效性
-// ==========================================
-ResetBrainAction::ResetBrainAction(Monster* m) : monster(m) {}
-
-bool ResetBrainAction::update(GameState& state) {
-    if (!monster || monster->isDead()) {
-        return true;
-    }
-    auto brain = monster->getBrain();
-    if (brain) {
-        brain->reset();
+bool ResetAllBrainsAction::update(GameState& state) {
+    for (auto& monster : state.monsters) {
+        if (!monster || monster->isDead()) {
+            continue;
+        }
+        auto brain = monster->getBrain();
+        if (brain) {
+            brain->reset();
+        }
     }
     return true;
 }

@@ -189,16 +189,16 @@ public:
     bool update(GameState& state) override;
 };
 
+
 // ==========================================
-// 具体动作：重置怪物大脑 (Reset Brain Action)
-//
+// 具体动作：重置所有怪物大脑 (Reset All Brains Action)
+// 
 // 用于战斗开始时重置所有怪物的 IntentBrain 状态
 // 确保每场战斗怪物行为独立
 // ==========================================
-class ResetBrainAction : public AbstractAction {
-    Monster* monster;
+class ResetAllBrainsAction : public AbstractAction {
 public:
-    explicit ResetBrainAction(Monster* m);
+    ResetAllBrainsAction() = default;
     bool update(GameState& state) override;
 };
 
