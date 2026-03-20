@@ -295,6 +295,9 @@ bool RequestCardSelectionAction::update(GameState& state) {
         case PileType::LIMBO:
             pile = &state.limbo;
             break;
+        default:
+            pile = nullptr;
+            break;
     }
     
     if (!pile || pile->empty()) {

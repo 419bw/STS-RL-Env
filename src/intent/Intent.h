@@ -2,6 +2,7 @@
 
 #include "src/core/ForwardDeclarations.h"
 #include <string>
+#include <memory>
 
 enum class IntentType {
     ATTACK,

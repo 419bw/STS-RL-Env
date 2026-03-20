@@ -42,12 +42,13 @@ void Monster::takeTurn(GameState& state) {
         if (!currentIntent.target || currentIntent.target->isDead()) {
             STS_LOG(state, "    [" << name << "] 攻击意图但目标为空或已死亡，跳过攻击\n");
         } else {
+            auto targetPtr = currentIntent.target->shared_from_this();
             STS_LOG(state, "    [" << name << "] 攻击 " << currentIntent.target->name
                 << " x" << currentIntent.hit_count << " (伤害:" << currentIntent.base_damage << ")\n");
             for (int i = 0; i < currentIntent.hit_count; ++i) {
                 state.addAction(std::make_unique<DamageAction>(
                     shared_from_this(),
-                    currentIntent.target->shared_from_this(),
+                    targetPtr,
                     currentIntent.base_damage));
             }
         }
