@@ -297,6 +297,7 @@ bool RequestCardSelectionAction::update(GameState& state) {
             break;
         default:
             pile = nullptr;
+            STS_LOG(state, "[警告] 未知的牌堆类型: " << static_cast<int>(sourcePileType));
             break;
     }
     
