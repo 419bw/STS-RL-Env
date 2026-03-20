@@ -33,11 +33,14 @@ Intent Monster::getVisibleIntent(const GameState& state) const {
 
 void Monster::takeTurn(GameState& state) {
     if (currentIntent.type == IntentType::ATTACK || currentIntent.type == IntentType::ATTACK_DEFEND) {
-        for (int i = 0; i < currentIntent.hit_count; ++i) {
-            state.addAction(std::make_unique<DamageAction>(
-                shared_from_this(),
-                currentIntent.target->shared_from_this(),
-                currentIntent.base_damage));
+        if (!currentIntent.target || currentIntent.target->isDead()) {
+        } else {
+            for (int i = 0; i < currentIntent.hit_count; ++i) {
+                state.addAction(std::make_unique<DamageAction>(
+                    shared_from_this(),
+                    currentIntent.target->shared_from_this(),
+                    currentIntent.base_damage));
+            }
         }
     }
 

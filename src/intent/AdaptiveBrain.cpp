@@ -10,8 +10,13 @@ Intent AdaptiveBrain::decide(GameState& state, Monster* owner) {
     for (auto& eval : evaluators) {
         if (auto intentOpt = eval(state, owner, state.player.get())) {
             moveHistory.push_back(intentOpt->type);
+            if (!intentOpt->target) {
+                intentOpt->target = state.player.get();
+            }
             return *intentOpt;
         }
     }
-    return Intent{IntentType::DEFEND, 0, 1, 0, nullptr};
+    Intent intent{IntentType::DEFEND, 0, 1, 0, nullptr};
+    intent.target = state.player.get();
+    return intent;
 }
