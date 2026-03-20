@@ -8,7 +8,9 @@
 class GameState;
 class CombatFlow;
 class Character;
+class Monster;
 class AbstractCard;
 class AbstractRelic;
 class AbstractPower;
 class AbstractAction;
+class IntentBrain;

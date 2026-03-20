@@ -18,6 +18,28 @@ bool DummyAction::update(GameState& state) {
 }
 
 // ==========================================
+// RollAllMonsterIntentsAction 实现
+// ==========================================
+bool RollAllMonsterIntentsAction::update(GameState& state) {
+    for (auto& monster : state.monsters) {
+        if (!monster->isDead()) {
+            monster->rollIntent(state);
+        }
+    }
+    return true;
+}
+
+// ==========================================
+// MonsterTakeTurnAction 实现
+// ==========================================
+bool MonsterTakeTurnAction::update(GameState& state) {
+    if (!monster->isDead()) {
+        monster->takeTurn(state);
+    }
+    return true;
+}
+
+// ==========================================
 // DamageAction 实现
 // 
 // 数据驱动原则：

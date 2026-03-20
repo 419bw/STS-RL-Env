@@ -109,9 +109,16 @@ public:
     // ==========================================
     
     // 修改掉血量（如无实体状态限制掉血为 1）
-    virtual int modifyHpLoss(int amount) const { 
-        return amount; 
+    virtual int modifyHpLoss(int amount) const {
+        return amount;
     }
+
+    // ==========================================
+    // 视野拦截查询
+    // ==========================================
+
+    // 能否看到敌人意图（某些致盲状态可以遮挡）
+    virtual bool canSeeEnemyIntents() const { return true; }
 
 protected:
     // ==========================================

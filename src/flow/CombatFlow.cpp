@@ -137,16 +137,15 @@ void CombatFlow::tick(GameState& state) {
 
         case CombatState::MONSTER_TURN_END:
             STS_LOG(state, "\n=== [PHASE] 怪物回合结束 ===\n");
-            
+
             state.eventBus.publish(EventType::PHASE_MONSTER_TURN_END, state);
-            
+
             for (auto& monster : state.monsters) {
                 if (!monster->isDead()) {
                     state.eventBus.publish(EventType::ON_TURN_END, state, monster.get());
                 }
             }
             ActionSystem::executeUntilBlocked(state, *this);
-            
             currentState = CombatState::ROUND_END;
             break;
 

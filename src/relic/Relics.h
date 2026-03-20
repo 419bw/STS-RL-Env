@@ -52,9 +52,22 @@ public:
 class TungstenRodRelic : public AbstractRelic {
 public:
     TungstenRodRelic() : AbstractRelic("钨合金棍") {}
-    
+
     // 所有掉血都会经过这里
     int modifyHpLoss(int amount) const override {
         return std::max(0, amount - 1);
     }
+};
+
+// ==========================================
+// 具体遗物：符文圆顶 (Runic Dome)
+//
+// 效果：看不到敌人的意图
+// 原理：遮挡视野，敌人意图对玩家显示为 UNKNOWN
+// ==========================================
+class RunicDomeRelic : public AbstractRelic {
+public:
+    RunicDomeRelic() : AbstractRelic("符文圆顶") {}
+
+    bool canSeeEnemyIntents() const override { return false; }
 };

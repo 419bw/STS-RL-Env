@@ -126,6 +126,13 @@ public:
     // 重载 2：处理虚弱倍率查询
     virtual void onQuery(WeakMultiplierQuery& query) {}
 
+    // ==========================================
+    // 视野拦截钩子
+    // ==========================================
+
+    // 能否看到怪物意图（符文圆顶遮挡）
+    virtual bool canSeeEnemyIntents() const { return true; }
+
 protected:
     // ==========================================
     // 内部引用（私有，由 Character::addRelic 设置）

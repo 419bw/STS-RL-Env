@@ -5,6 +5,9 @@
 #include <memory>
 #include "src/core/ForwardDeclarations.h"
 #include "src/power/AbstractPower.h"
+#include "src/relic/AbstractRelic.h"
+#include "src/intent/Intent.h"
+#include "src/intent/IntentBrain.h"
 
 // ==========================================
 // 实体基类 (Character) - 玩家和怪物的通用属性
@@ -122,7 +125,7 @@ public:
     
     // 清空所有状态
     void clearPowers();
-    
+
     // 遍历状态的只读访问（用于计算层遍历）
     // 使用回调函数模式，避免暴露内部容器
     template<typename Func>
@@ -130,6 +133,21 @@ public:
         for (const auto& power : powers) {
             func(power);
         }
+    }
+
+    // ==========================================
+    // 视野拦截查询
+    // ==========================================
+
+    // 能否看到敌人意图（遍历所有遗物和状态效果）
+    bool canSeeEnemyIntents() const {
+        for (const auto& relic : relics) {
+            if (!relic->canSeeEnemyIntents()) return false;
+        }
+        for (const auto& power : powers) {
+            if (!power->canSeeEnemyIntents()) return false;
+        }
+        return true;
     }
 
     // ==========================================
@@ -230,7 +248,20 @@ private:
 // ==========================================
 class Monster : public Character {
 public:
-    bool deathReported;  // 是否已播报死亡（避免重复播报）
-    
-    Monster(std::string n, int hp) : Character(n, hp), deathReported(false) {}
+    bool deathReported;
+
+    Monster(std::string n, int hp);
+    void rollIntent(GameState& state);
+    void setBrain(IntentBrainPtr b);
+
+    const Intent& getRealIntent() const { return currentIntent; }
+    Intent getVisibleIntent(const GameState& state) const;
+
+    virtual void takeTurn(GameState& state);
+protected:
+    virtual void executeSpecialIntent(GameState& state) {}
+
+private:
+    IntentBrainPtr brain;
+    Intent currentIntent;
 };

@@ -18,6 +18,27 @@ public:
 };
 
 // ==========================================
+// 怪物意图刷新动作 (Roll All Monster Intents Action)
+// 所有操作都通过 Action 队列执行，符合铁律
+// ==========================================
+class RollAllMonsterIntentsAction : public AbstractAction {
+public:
+    RollAllMonsterIntentsAction() = default;
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 怪物回合执行动作 (Monster Take Turn Action)
+// 将怪物回合执行封装为 Action，确保时序正确（荆棘反伤等）
+// ==========================================
+class MonsterTakeTurnAction : public AbstractAction {
+    std::shared_ptr<Monster> monster;
+public:
+    MonsterTakeTurnAction(std::shared_ptr<Monster> m) : monster(m) {}
+    bool update(GameState& state) override;
+};
+
+// ==========================================
 // 具体动作：伤害动作 (Damage Action)
 // 
 // 数据驱动原则：
