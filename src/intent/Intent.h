@@ -33,6 +33,8 @@ struct Intent {
     int effect_value = 0;
     Character* target = nullptr;
     bool visible = true;
+    int move_id = -1;
+    std::string move_name;
 };
 
 std::string Intent_DebugString(const Intent& intent);

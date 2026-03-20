@@ -70,6 +70,11 @@ void VulnerablePower::onApply(GameState& state) {
         });
 }
 
+float StrengthPower::atDamageGive(float damage, DamageType type) {
+    if (type != DamageType::ATTACK) return damage;
+    return damage + getAmount();
+}
+
 // ==========================================
 // PoisonPower 实现
 // 

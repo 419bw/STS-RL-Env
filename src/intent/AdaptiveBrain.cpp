@@ -9,7 +9,7 @@ AdaptiveBrain& AdaptiveBrain::addRule(IntentEvaluator eval) {
 Intent AdaptiveBrain::decide(GameState& state, Monster* owner) {
     for (auto& eval : evaluators) {
         if (auto intentOpt = eval(state, owner, state.player.get())) {
-            moveHistory.push_back(intentOpt->type);
+            recordMoveId(intentOpt->move_id);
             if (!intentOpt->target) {
                 intentOpt->target = state.player.get();
             }

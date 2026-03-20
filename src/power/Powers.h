@@ -35,8 +35,15 @@ public:
 // ==========================================
 class PoisonPower : public AbstractPower {
 public:
-    PoisonPower(int amount) 
+    PoisonPower(int amount)
         : AbstractPower("中毒", amount, PowerType::DEBUFF) {}
 
     void onApply(GameState& state) override;
+};
+
+class StrengthPower : public AbstractPower {
+public:
+    StrengthPower(int amount)
+        : AbstractPower("力量", amount, PowerType::BUFF) {}
+    float atDamageGive(float damage, DamageType type) override;
 };

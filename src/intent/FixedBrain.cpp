@@ -9,7 +9,7 @@ Intent FixedBrain::decide(GameState& state, Monster* owner) {
         return Intent{IntentType::DEFEND, 0, 1, 0, nullptr};
     }
     Intent intent = intentSequence[currentIndex];
-    moveHistory.push_back(intent.type);
+    recordMoveId(intent.move_id);
     currentIndex = (currentIndex + 1) % intentSequence.size();
     return intent;
 }

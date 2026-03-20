@@ -11,6 +11,6 @@ Intent RandomBrain::decide(GameState& state, Monster* owner) {
     }
     std::uniform_int_distribution<size_t> dist(0, possibleIntents.size() - 1);
     Intent intent = possibleIntents[dist(state.rng.monsterRng)];
-    moveHistory.push_back(intent.type);
+    recordMoveId(intent.move_id);
     return intent;
 }
