@@ -333,7 +333,9 @@ std::shared_ptr<AbstractRelic> Character::getRelic(const std::string& relicName)
 
 void Character::clearRelics(GameState& state) {
     for (auto& relic : relics) {
-        relic->onRemove(state);
+        if (relic) {
+            relic->onRemove(state);
+        }
     }
     relics.clear();
 }
