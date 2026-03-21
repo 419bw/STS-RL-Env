@@ -52,8 +52,26 @@ class DamageAction : public AbstractAction {
     int amount;
     DamageType damageType;              // 伤害类型
 public:
-    DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a, 
+    DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a,
                  DamageType type = DamageType::ATTACK);
+    bool update(GameState& state) override;
+};
+
+// ==========================================
+// 具体动作：随机目标伤害动作 (Random Damage Action)
+//
+// 特性：
+// - 随机选择一个存活怪物作为目标
+// - 将伤害委托给 DamageAction 执行
+// - 用于"乱叉"等随机攻击效果
+// ==========================================
+class RandomDamageAction : public AbstractAction {
+    std::shared_ptr<Character> source;
+    int damage;
+    DamageType damageType;
+public:
+    RandomDamageAction(std::shared_ptr<Character> src, int dmg,
+                       DamageType type = DamageType::ATTACK);
     bool update(GameState& state) override;
 };
 

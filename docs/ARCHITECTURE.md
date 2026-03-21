@@ -70,6 +70,26 @@ public:
 - `DrawCardsAction` / `DiscardHandAction` / `ShuffleDiscardIntoDrawAction` - 牌库操作
 - `RequestCardSelectionAction` - 选牌请求（阻塞引擎）
 - `UseCardAction` - 卡牌善后处理
+- `RandomDamageAction` - 随机目标伤害（复合 Action 模式）
+
+**Action Deriving Action 模式**：
+
+`RandomDamageAction` 代表了一种复合 Action 模式：
+
+```
+RandomDamageAction::update()
+    │
+    ├─ 使用 state.rng.combatRng 随机选择目标
+    │
+    └─ 创建 DamageAction 委托执行
+            ↓
+        ActionQueue.add(DamageAction)  // 子 Action 入队
+
+架构意义：
+- 父 Action 在同一帧内完成（返回 true）
+- 子 Action 由 ActionSystem 后续执行
+- 这与 RequestCardSelectionAction 的阻塞模式形成对比
+```
 
 ### 2.2 EventBus 事件总线模式
 
@@ -247,6 +267,7 @@ public:
 - Action 对象必须携带完整上下文（source、target、amount 等）
 - 操作实体前必须检查 `isDead()`
 - 使用 `std::unique_ptr` 管理生命周期
+- **委托模式约束**：若 Action 内部创建子 Action，父 Action 应在当帧完成（返回 true），子 Action 由 ActionSystem 驱动执行
 
 ### 4.3 AbstractCard 接口
 
@@ -271,7 +292,7 @@ public:
 | 枚举值 | 含义 | 出牌路由 |
 |--------|------|----------|
 | `ENEMY` | 敌方单体 | `PlayerActions::playAttackCard()` |
-| `ALL_ENEMIES` | 敌方全体 | `PlayerActions::playAttackCard()` |
+| `ALL_ENEMY` | 敌方全体 | `PlayerActions::playAttackCard()` |
 | `SELF` | 自身 | `PlayerActions::playSkillCard()` |
 | `NONE` | 无目标 | `PlayerActions::playPowerCard()` |
 
@@ -408,6 +429,12 @@ static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
 | switch | 必须带 `default` 分支 |
 | 策略查找失败 | 返回绝对安全的默认值 |
 | 除零检查 | 严密拦截除零、随机数区间反转等 UB |
+
+### 7.4 LambdaAction 闭包规范
+
+- 严禁使用引用捕获 `[&]`
+- 必须使用值捕获 `[=]` 或显式值捕获（如 `[damage, source]`）
+- 违反此规范将导致悬空引用，触发未定义行为
 
 ---
 

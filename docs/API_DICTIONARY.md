@@ -64,6 +64,7 @@
 | `RollAllMonsterIntentsAction()` | 刷新所有怪物意图 |
 | `MonsterTakeTurnAction(std::shared_ptr<Monster>)` | 怪物回合执行动作 |
 | `DamageAction(src, tgt, amount, DamageType)` | 物理伤害动作（走护甲管线） |
+| `RandomDamageAction(src, dmg, DamageType)` | 随机攻击动作（乱叉：随机选中一个存活怪物，委托 DamageAction 执行） |
 | `LoseHpAction(target, amount)` | 直接扣血动作（无视护甲） |
 | `GainBlockAction(target, amount)` | 获得格挡动作 |
 | `ApplyPowerAction(src, tgt, power)` | 施加状态效果（含叠加逻辑） |
@@ -78,6 +79,22 @@
 | `DrawCardsAction(amount)` | 抽牌动作（含洗牌/爆牌判定） |
 | `ShuffleDiscardIntoDrawAction()` | 弃牌堆洗入抽牌堆 |
 | `DiscardHandAction()` | 丢弃所有手牌 |
+
+### 2.X LambdaAction（通用延迟动作）
+
+| 签名 | 说明 |
+|------|------|
+| `make(weak_ptr<Character>, function<void(GameState&, Character*)>) -> unique_ptr<LambdaAction>` | 工厂函数，创建带 source 生命周期监听的 LambdaAction |
+
+**执行流程**：
+1. `weak_ptr.lock()` 检查 source 是否存活
+2. 若 lock 失败或 source->isDead() → return true（跳过执行）
+3. 提取 `raw = locked.get()` 传给闭包
+4. 调用闭包，闭包内部自行查询 target
+5. return true（当帧完成）
+
+**闭包规范**：
+- 严禁使用引用捕获 `[&]`，必须使用值捕获 `[=]`
 
 ---
 

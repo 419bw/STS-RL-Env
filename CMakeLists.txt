@@ -31,6 +31,7 @@ set(EVENT_SOURCES
 
 set(ACTION_SOURCES
     src/action/Actions.cpp
+    src/action/LambdaAction.cpp
 )
 
 set(POWER_SOURCES

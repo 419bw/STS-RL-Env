@@ -104,6 +104,43 @@ bool DamageAction::update(GameState& state) {
 }
 
 // ==========================================
+// RandomDamageAction 实现
+//
+// 特性：
+// - 随机选择存活的怪物作为目标
+// - 将实际伤害委托给 DamageAction
+// - 若没有存活目标则直接结束
+// ==========================================
+RandomDamageAction::RandomDamageAction(std::shared_ptr<Character> src, int dmg,
+                                       DamageType type)
+    : source(src), damage(dmg), damageType(type) {}
+
+bool RandomDamageAction::update(GameState& state) {
+    if (!source || source->isDead()) {
+        return true;
+    }
+
+    std::vector<std::shared_ptr<Monster>> alive;
+    for (auto& m : state.monsters) {
+        if (!m->isDead()) {
+            alive.push_back(m);
+        }
+    }
+
+    if (alive.empty()) {
+        return true;
+    }
+
+    std::uniform_int_distribution<size_t> dist(0, alive.size() - 1);
+    auto target = alive[dist(state.rng.combatRng)];
+
+    state.addActionToFront(std::make_unique<DamageAction>(
+        source, target, damage, damageType));
+
+    return true;
+}
+
+// ==========================================
 // LoseHpAction 实现
 // 
 // 特性：

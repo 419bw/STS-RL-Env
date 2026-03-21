@@ -80,21 +80,9 @@ bool PlayerActions::playCard(GameState& state,
             target = nullptr;
             break;
         case CardTarget::RANDOM:
-            {
-                std::vector<std::shared_ptr<Monster>> alive;
-                for (auto& m : state.monsters) {
-                    if (!m->isDead()) {
-                        alive.push_back(m);
-                    }
-                }
-                if (!alive.empty()) {
-                    std::uniform_int_distribution<> dist(0, static_cast<int>(alive.size()) - 1);
-                    target = alive[dist(state.rng.combatRng)];
-                } else {
-                    STS_LOG(state, "[警告] RANDOM 目标无可用敌人！\n");
-                    return false;
-                }
-            }
+            STS_LOG(state, "[架构规范] " << card->id << " 使用 RANDOM 目标，"
+                "随机逻辑需在卡牌 use() 内部通过 RandomDamageAction 或 LambdaAction 实现\n");
+            target = nullptr;
             break;
         default:
             STS_LOG(state, "[错误] 未知 CardTarget 类型！\n");
