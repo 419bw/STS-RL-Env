@@ -46,17 +46,18 @@ public:
     // amount = -1 表示不可叠加（如能力牌效果）
     // 默认实现：层数相加
     // ==========================================
+    static constexpr int MAX_AMOUNT = 999;
+    static constexpr int MIN_AMOUNT = -999;
+
     virtual void stackPower(int stackAmount) {
         if (this->amount == -1) {
             return;
         }
-        const int POWER_MAX_AMOUNT = 999;
-        const int POWER_MIN_AMOUNT = -999;
         int newAmount = this->amount + stackAmount;
-        if (newAmount > POWER_MAX_AMOUNT) {
-            newAmount = POWER_MAX_AMOUNT;
-        } else if (newAmount < POWER_MIN_AMOUNT) {
-            newAmount = POWER_MIN_AMOUNT;
+        if (newAmount > MAX_AMOUNT) {
+            newAmount = MAX_AMOUNT;
+        } else if (newAmount < MIN_AMOUNT) {
+            newAmount = MIN_AMOUNT;
         }
         this->amount = newAmount;
     }
