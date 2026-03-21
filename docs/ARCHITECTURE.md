@@ -258,12 +258,24 @@ public:
     std::string id;
     int cost;           // -1 表示 X 费牌
     CardType type;
+    CardTarget targetType;  // 目标类型（敌方全体/单目标/自身/无目标）
     int energyOnUse;    // X 费牌打出时的费用
     bool isExhaust;     // 是否消耗
 
     virtual void use(GameState& state, std::shared_ptr<Character> target) = 0;
 };
 ```
+
+**CardTarget 枚举值**（[Types.h](file:///j:\学习\项目\STS_CPP\src\core\Types.h)）：
+
+| 枚举值 | 含义 | 出牌路由 |
+|--------|------|----------|
+| `ENEMY` | 敌方单体 | `PlayerActions::playAttackCard()` |
+| `ALL_ENEMIES` | 敌方全体 | `PlayerActions::playAttackCard()` |
+| `SELF` | 自身 | `PlayerActions::playSkillCard()` |
+| `NONE` | 无目标 | `PlayerActions::playPowerCard()` |
+
+**PlayerActions 路由校验**：卡牌使用时根据 `targetType` 分发到对应的 PlayerActions 方法。若目标类型与卡牌类型不匹配（如技能牌 targetType=ENEMY 但指向了错误目标），路由层应抛出 `std::invalid_argument`。
 
 ---
 

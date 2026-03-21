@@ -8,7 +8,7 @@
 // ==========================================
 class StrikeCard : public AbstractCard {
 public:
-    StrikeCard() : AbstractCard("Strike", 1, CardType::ATTACK) {}
+    StrikeCard() : AbstractCard("Strike", 1, CardType::ATTACK, CardTarget::ENEMY) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };
 
@@ -17,7 +17,7 @@ public:
 // ==========================================
 class DeadlyPoisonCard : public AbstractCard {
 public:
-    DeadlyPoisonCard() : AbstractCard("Deadly Poison", 1, CardType::SKILL) {}
+    DeadlyPoisonCard() : AbstractCard("Deadly Poison", 1, CardType::SKILL, CardTarget::ENEMY) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };
 
@@ -27,6 +27,6 @@ public:
 class WhirlwindCard : public AbstractCard {
 public:
     // cost 设为 -1，代表这是 X 费牌
-    WhirlwindCard() : AbstractCard("Whirlwind", -1, CardType::ATTACK) {}
+    WhirlwindCard() : AbstractCard("Whirlwind", -1, CardType::ATTACK, CardTarget::ALL_ENEMY) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };

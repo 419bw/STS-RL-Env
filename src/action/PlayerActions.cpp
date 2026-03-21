@@ -7,6 +7,7 @@
 #include "src/utils/Logger.h"
 #include <algorithm>
 #include <iostream>
+#include <random>
 
 // ==========================================
 // 玩家动作实现
@@ -60,6 +61,46 @@ bool PlayerActions::playCard(GameState& state,
     // 调用 card->use(state, target)，将卡牌自身产生的业务动作推入队列
     // ==========================================
     state.eventBus.publish(EventType::ON_CARD_PLAYING, state, card.get());
+
+    // CardTarget 校验路由
+    switch (card->targetType) {
+        case CardTarget::ENEMY:
+            if (!target || target->isDead()) {
+                STS_LOG(state, "[警告] " << card->id << " 需要指定一个存活的敌人目标！\n");
+                return false;
+            }
+            break;
+        case CardTarget::ALL_ENEMY:
+            target = nullptr;
+            break;
+        case CardTarget::SELF:
+            target = state.player;
+            break;
+        case CardTarget::NONE:
+            target = nullptr;
+            break;
+        case CardTarget::RANDOM:
+            {
+                std::vector<std::shared_ptr<Monster>> alive;
+                for (auto& m : state.monsters) {
+                    if (!m->isDead()) {
+                        alive.push_back(m);
+                    }
+                }
+                if (!alive.empty()) {
+                    std::uniform_int_distribution<> dist(0, static_cast<int>(alive.size()) - 1);
+                    target = alive[dist(state.rng.combatRng)];
+                } else {
+                    STS_LOG(state, "[警告] RANDOM 目标无可用敌人！\n");
+                    return false;
+                }
+            }
+            break;
+        default:
+            STS_LOG(state, "[错误] 未知 CardTarget 类型！\n");
+            return false;
+    }
+
     card->use(state, target);
     state.eventBus.publish(EventType::ON_CARD_PLAYED, state, card.get());
 
