@@ -14,7 +14,7 @@
 |---------|------|
 | `void onApply(GameState&)` | 状态挂载时触发，用于注册事件订阅 |
 | `void onRemove(GameState&)` | 状态移除时触发，用于清理事件订阅 |
-| `void stackPower(int)` | 状态叠加时调用，默认实现为层数相加 |
+| `void stackPower(int)` | 状态叠加时调用，默认实现为层数相加（限制在 [-999, 999] 范围内） |
 | `float atDamageGive(float damage, DamageType)` | **阶段1**: 攻击者基础修饰（力量加成） |
 | `float atDamageReceive(float damage, DamageType, Character* source)` | **阶段2**: 防御者基础修饰（易伤倍率） |
 | `float atDamageFinalGive(float damage, DamageType)` | **阶段3**: 攻击者最终修饰（极限乘法） |

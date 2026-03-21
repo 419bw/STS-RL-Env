@@ -48,10 +48,17 @@ public:
     // ==========================================
     virtual void stackPower(int stackAmount) {
         if (this->amount == -1) {
-            // 不可叠加状态，什么都不做
             return;
         }
-        this->amount += stackAmount;
+        const int POWER_MAX_AMOUNT = 999;
+        const int POWER_MIN_AMOUNT = -999;
+        int newAmount = this->amount + stackAmount;
+        if (newAmount > POWER_MAX_AMOUNT) {
+            newAmount = POWER_MAX_AMOUNT;
+        } else if (newAmount < POWER_MIN_AMOUNT) {
+            newAmount = POWER_MIN_AMOUNT;
+        }
+        this->amount = newAmount;
     }
 
     // 状态挂载时触发，用于注册事件
