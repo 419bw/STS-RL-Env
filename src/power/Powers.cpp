@@ -80,7 +80,7 @@ float AgilityPower::atBlockGive(float block) {
     float newBlock = block + getAmount();
     
     // 防御性检查：拦截 NaN 和 INF
-    if (std::isnan(newBlock) || std::isfinite(newBlock) == false) {
+    if (std::isnan(newBlock) || !std::isfinite(newBlock)) {
         ENGINE_TRACE("[" << name << "] 检测到非法格挡值: " << newBlock << "，强制归零");
         newBlock = 0;
     } else if (newBlock < 0) {
