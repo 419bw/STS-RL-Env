@@ -295,6 +295,7 @@ public:
 | `ALL_ENEMY` | 敌方全体 | `PlayerActions::playAttackCard()` |
 | `SELF` | 自身 | `PlayerActions::playSkillCard()` |
 | `NONE` | 无目标 | `PlayerActions::playPowerCard()` |
+| `RANDOM` | 随机敌方 | 由卡牌 use() 内部通过 RandomDamageAction 或 LambdaAction 处理 |
 
 **PlayerActions 路由校验**：卡牌使用时根据 `targetType` 分发到对应的 PlayerActions 方法。若目标类型与卡牌类型不匹配（如技能牌 targetType=ENEMY 但指向了错误目标），路由层应抛出 `std::invalid_argument`。
 
