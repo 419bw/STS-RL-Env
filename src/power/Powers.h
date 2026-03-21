@@ -47,3 +47,10 @@ public:
         : AbstractPower("力量", amount, PowerType::BUFF) {}
     float atDamageGive(float damage, DamageType type) override;
 };
+
+class AgilityPower : public AbstractPower {
+public:
+    AgilityPower(int amount)
+        : AbstractPower("敏捷", amount, PowerType::BUFF) {}
+    float atBlockGive(float block) override;
+};

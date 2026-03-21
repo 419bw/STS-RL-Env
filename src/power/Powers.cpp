@@ -6,6 +6,7 @@
 #include "src/core/Queries.h"
 #include "src/utils/Logger.h"
 #include <iostream>
+#include <cmath>
 
 // ==========================================
 // VulnerablePower 实现
@@ -73,6 +74,21 @@ void VulnerablePower::onApply(GameState& state) {
 float StrengthPower::atDamageGive(float damage, DamageType type) {
     if (type != DamageType::ATTACK) return damage;
     return damage + getAmount();
+}
+
+float AgilityPower::atBlockGive(float block) {
+    float newBlock = block + getAmount();
+    
+    // 防御性检查：拦截 NaN 和 INF
+    if (std::isnan(newBlock) || std::isfinite(newBlock) == false) {
+        ENGINE_TRACE("[" << name << "] 检测到非法格挡值: " << newBlock << "，强制归零");
+        newBlock = 0;
+    } else if (newBlock < 0) {
+        newBlock = 0;
+    }
+    
+    ENGINE_TRACE("[" << name << "] 格挡修饰: " << block << " -> " << newBlock);
+    return newBlock;
 }
 
 // ==========================================
