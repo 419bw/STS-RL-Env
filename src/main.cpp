@@ -69,22 +69,27 @@ int main() {
 
     // 攻击牌：Strike x5
     for (int i = 0; i < 5; ++i) {
-        state.drawPile.push_back(std::make_shared<StrikeCard>());
+        state.discardPile.push_back(std::make_shared<StrikeCard>());
     }
     // 技能牌：Defend x4 (如果存在)
     // 毒素牌：Deadly Poison x3
     for (int i = 0; i < 3; ++i) {
-        state.drawPile.push_back(std::make_shared<DeadlyPoisonCard>());
+        state.discardPile.push_back(std::make_shared<DeadlyPoisonCard>());
     }
     // AOE牌：Whirlwind x2
     for (int i = 0; i < 2; ++i) {
-        state.drawPile.push_back(std::make_shared<WhirlwindCard>());
+        state.discardPile.push_back(std::make_shared<WhirlwindCard>());
+    }
+    // 飞刀牌：Shuriken x3
+    for (int i = 0; i < 3; ++i) {
+        state.discardPile.push_back(std::make_shared<ShurikenCard>());
     }
 
-    STS_LOG(state, "  抽牌堆: " << state.drawPile.size() << " 张\n");
+    STS_LOG(state, "  弃牌堆: " << state.discardPile.size() << " 张\n");
     STS_LOG(state, "    - Strike: 5 张 (1费 攻击)\n");
     STS_LOG(state, "    - Deadly Poison: 3 张 (1费 中毒)\n");
     STS_LOG(state, "    - Whirlwind: 2 张 (X费 AOE)\n");
+    STS_LOG(state, "    - Shuriken: 3 张 (1费 攻击)\n");
 
     // ==========================================
     // 4. 注册基础规则
