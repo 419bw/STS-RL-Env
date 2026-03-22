@@ -3,6 +3,7 @@
 #include "src/test/TestVulnerableRelic.cpp"
 #include "src/test/TestDamagePipeline.cpp"
 #include "src/test/TestMonster.cpp"
+#include "src/test/TestRandomDamageAction.cpp"
 
 int main() {
     std::cout << "========================================\n";
@@ -19,6 +20,9 @@ int main() {
     BlockPipelineTests::runAllTests();
     std::cout << "\n";
     MonsterTests::runAllTests();
+    std::cout << "\n";
+    RandomDamageActionTests::runAllTests();
+    std::cout << "\n";
 
     std::cout << "\n========================================\n";
     std::cout << "  所有测试完成\n";

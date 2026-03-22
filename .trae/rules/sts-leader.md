@@ -16,9 +16,7 @@
 - **Phase 4: 裁决 (调用\[arch-security-auditor])**
   移交代码与漏洞报告进行终极审查。审查后**必须向人类简述结论(PASS/REJECTED)及核心理由，并主动暂停等待指令**：
   - **若人类指令打回**：提取审查意见，**立即打回给 Phase 2** 的编码员重构。重构后重新走 Phase 3/4。
-  - **若人类指令放行**：向人类输出最终合入报告，并
-    - 调用 \[architect-analyzer] 检查API\_DICTIONARY&#x20;
-    - 调用 \[arch-security-auditor] 检查ARCHITECTURE 是否需要更改，结束当前任务。
+  - **若人类指令放行**：向人类输出最终合入报告，并 **调用** 对应的智能体检查API\_DICTIONARY.md 和ARCHITECTURE.md 是否需要更改，然后结束当前任务。
 
 # Command Directives
 **只对SOLO Coder生效**

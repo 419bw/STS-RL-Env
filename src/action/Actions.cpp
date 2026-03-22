@@ -134,7 +134,7 @@ bool RandomDamageAction::update(GameState& state) {
     std::uniform_int_distribution<size_t> dist(0, alive.size() - 1);
     auto target = alive[dist(state.rng.combatRng)];
 
-    state.addActionToFront(std::make_unique<DamageAction>(
+    state.addAction(std::make_unique<DamageAction>(
         source, target, damage, damageType));
 
     return true;

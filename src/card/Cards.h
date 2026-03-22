@@ -30,3 +30,12 @@ public:
     WhirlwindCard() : AbstractCard("Whirlwind", -1, CardType::ATTACK, CardTarget::ALL_ENEMY) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };
+
+// ==========================================
+// 具体卡牌：飞剑回旋镖 (Shuriken)
+// ==========================================
+class Shuriken : public AbstractCard {
+public:
+    Shuriken();
+    void use(GameState& state, std::shared_ptr<Character> target) override;
+};
