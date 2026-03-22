@@ -59,14 +59,14 @@ void WhirlwindCard::use(GameState& state, std::shared_ptr<Character> target) {
 }
 
 // ==========================================
-// Shuriken 实现
-// 
+// ShurikenCard 实现
+//
 // 效果：对随机目标造成 3 次 3 点伤害
 // ==========================================
-Shuriken::Shuriken()
+ShurikenCard::ShurikenCard()
     : AbstractCard("Shuriken", 1, CardType::ATTACK, CardTarget::RANDOM) {}
 
-void Shuriken::use(GameState& state, std::shared_ptr<Character> target) {
+void ShurikenCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 飞剑回旋镖!\n");
     
     for (int i = 0; i < 3; ++i) {
