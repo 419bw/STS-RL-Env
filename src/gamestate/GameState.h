@@ -153,7 +153,13 @@ private:
     // 使用 deque 支持 push_front
     // ==========================================
     std::deque<std::unique_ptr<AbstractAction>> actionQueue;
-    
+
+    // ==========================================
+    // 当前正在执行的动作（指针转移模式）
+    // 避免引用队列头部带来的迭代器失效问题
+    // ==========================================
+    std::unique_ptr<AbstractAction> currentAction = nullptr;
+
     // 允许 ActionSystem 直接访问队列进行执行
     friend class ActionSystem;
 };

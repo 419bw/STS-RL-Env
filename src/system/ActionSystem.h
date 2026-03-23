@@ -2,6 +2,7 @@
 
 #include "src/gamestate/GameState.h"
 #include "src/flow/CombatFlow.h"
+#include "src/utils/Logger.h"
 
 // ==========================================
 // ActionSystem - 动作系统 (核心流转马达)
@@ -18,8 +19,6 @@
 class ActionSystem {
 public:
     // ==========================================
-    // 静态驱动器：不断弹出并执行队列动作，直到被阻塞或清空
-    // 
     // 核心逻辑：
     // 1. 只要队列不为空 且 处于自由出牌状态，就继续执行
     // 2. 当 currentPhase 变为 WAITING_FOR_CARD_SELECTION 时自动停止
@@ -27,16 +26,29 @@ public:
     // 4. 每个动作执行完毕后，进行 SBA 全局巡视
     // ==========================================
     static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
-        while (!state.actionQueue.empty() && state.currentPhase == StatePhase::PLAYING_CARD) {
-            auto& action = state.actionQueue.front();
-            bool completed = action->update(state);
-            
-            if (completed) {
+        int loopCount = 0;
+
+        while (state.currentPhase == StatePhase::PLAYING_CARD) {
+            if (++loopCount > 1000) {
+                break;
+            }
+
+            if (!state.currentAction) {
+                if (state.actionQueue.empty()) {
+                    break;
+                }
+                state.currentAction = std::move(state.actionQueue.front());
                 state.actionQueue.pop_front();
-                
-                // ★ 铁律：每个动作执行完毕后，必须进行上帝视角的巡视！
+            }
+
+            bool isDone = state.currentAction->update(state);
+
+            if (isDone) {
+                state.currentAction.reset();
                 flow.sbaGlobalCheck(state);
                 flow.checkBattleEndCondition(state);
+            } else {
+                break;
             }
             // 如果动作返回 false，说明切换了 Phase 阻塞了引擎，while 循环自动打破
         }

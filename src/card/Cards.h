@@ -32,10 +32,10 @@ public:
 };
 
 // ==========================================
-// 具体卡牌：飞剑回旋镖 (ShurikenCard)
+// 具体卡牌：飞剑回旋镖 (Shuriken)
 // ==========================================
 class ShurikenCard : public AbstractCard {
 public:
-    ShurikenCard();
+    ShurikenCard() : AbstractCard("Shuriken", 1, CardType::ATTACK, CardTarget::RANDOM) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };
