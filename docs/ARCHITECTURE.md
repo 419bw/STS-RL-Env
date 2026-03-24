@@ -356,19 +356,61 @@ BATTLE_START → ROUND_START → PLAYER_TURN_START → PLAYER_ACTION
 **核心驱动器**：
 ```cpp
 static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
-    while (!state.actionQueue.empty() && state.currentPhase == StatePhase::PLAYING_CARD) {
-        auto& action = state.actionQueue.front();
-        bool completed = action->update(state);
+    int loopCount = 0;
 
-        if (completed) {
+    while (state.currentPhase == StatePhase::PLAYING_CARD) {
+        if (++loopCount > 1000) {
+            break;  // 防死锁看门狗
+        }
+
+        if (!state.currentAction) {
+            if (state.actionQueue.empty()) {
+                break;
+            }
+            state.currentAction = std::move(state.actionQueue.front());
             state.actionQueue.pop_front();
+        }
+
+        bool isDone = state.currentAction->update(state);
+
+        if (isDone) {
+            state.currentAction.reset();
             flow.sbaGlobalCheck(state);      // SBA 全局巡视
             flow.checkBattleEndCondition(state);
+        } else {
+            break;  // currentAction 返回 false → 阻塞等待
         }
-        // 返回 false → 切换 Phase → while 循环自动打破
     }
 }
 ```
+
+**currentAction 模式**：
+- `state.currentAction` 持有当前正在执行的 Action 指针
+- 当 Action::update() 返回 true（完成）时，重置 currentAction，然后执行 SBA 全局巡视
+- 当 Action::update() 返回 false（阻塞）时，保留 currentAction，退出循环等待下一帧继续
+- 下次调用 executeUntilBlocked 时，若 currentAction 存在则直接继续执行
+
+**addActionToFront 正确工作原理**：
+```cpp
+// GameState.h
+void addActionToFront(std::unique_ptr<AbstractAction> action) {
+    if (currentAction) {
+        // 将当前执行中的 Action 移出，插入到队列头部
+        auto temp = std::move(currentAction);
+        actionQueue.push_front(std::move(temp));
+        currentAction = std::move(action);
+    } else {
+        actionQueue.push_front(std::move(action));
+    }
+}
+```
+- 若 `currentAction` 存在（当前有 Action 正在阻塞），将 currentAction 移出并插入队列头部，再将新 Action 放入 currentAction
+- 若 `currentAction` 为空，直接 push_front
+- **设计意图**：允许 SBA 等高优先级系统插入紧急 Action，使其在当前阻塞 Action 之后、下一个 Action 之前执行
+
+**防死锁看门狗机制**：
+- 1000 次循环上限，防止极端情况下无限循环
+- 触发后跳出循环，等待下一帧继续（由外部回合逻辑驱动）
 
 ### 5.4 EventBus.h - 事件总线
 

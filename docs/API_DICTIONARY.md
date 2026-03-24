@@ -96,6 +96,24 @@
 **闭包规范**：
 - 严禁使用引用捕获 `[&]`，必须使用值捕获 `[=]`
 
+### 2.Y ActionSystem 核心接口
+
+| 接口签名 | 说明 |
+|---------|------|
+| `void addAction(std::unique_ptr<AbstractAction>)` | 添加 Action 到队列尾部 |
+| `void addActionToFront(std::unique_ptr<AbstractAction>)` | 添加 Action 到队列头部（含 currentAction 插队逻辑） |
+| `static void executeUntilBlocked(GameState&, CombatFlow&)` | O(1) 执行循环，驱动队列排空 |
+
+**addActionToFront 行为**：
+- 若 `currentAction` 存在（阻塞态），将 currentAction 移至队列头部，再将新 Action 置入 currentAction
+- 若 `currentAction 为空，直接 push_front
+- **典型用途**：SBA 全局检查插入的 DamageAction、DeathCheckAction 等高优先级动作
+
+**防死锁看门狗**：
+- `executeUntilBlocked` 内部含 1000 次循环上限计数器
+- 超出上限时强制 break，防止状态机死锁
+- 触发条件：极端多的微小 Action 或递归委托链过深
+
 ---
 
 ## 3. 事件总线频道 (EventBus Events)
