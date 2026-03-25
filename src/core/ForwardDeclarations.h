@@ -10,6 +10,7 @@ class CombatFlow;
 class Character;
 class Monster;
 class AbstractCard;
+class AbstractPotion;
 class AbstractRelic;
 class AbstractPower;
 class AbstractAction;

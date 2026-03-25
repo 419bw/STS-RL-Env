@@ -95,6 +95,7 @@ public:
     std::vector<std::shared_ptr<AbstractCard>> discardPile;
     std::vector<std::shared_ptr<AbstractCard>> exhaustPile;
     std::vector<std::shared_ptr<AbstractCard>> limbo;
+    std::vector<std::shared_ptr<AbstractPotion>> potions;
 
     // ==========================================
     // 玩家行动子状态

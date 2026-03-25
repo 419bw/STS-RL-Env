@@ -17,6 +17,7 @@ src/
 ├── intent/          # Intent 意图系统（AI 决策）
 │   └── brains/      # 具体 Brain 实现
 ├── power/           # Power 状态效果系统
+├── potion/          # Potion 药水系统
 ├── relic/           # Relic 遗物系统
 ├── rules/           # 基础规则
 ├── system/          # ActionSystem 执行器、DeckSystem
@@ -37,6 +38,7 @@ src/
 | **AbstractCard** | 卡牌基类：提供 use() 接口 | [AbstractCard.h](file:///j:\学习\项目\STS_CPP\src\card\AbstractCard.h) |
 | **AbstractPower** | 状态效果基类：四阶段伤害计算管线 | [AbstractPower.h](file:///j:\学习\项目\STS_CPP\src\power\AbstractPower.h) |
 | **AbstractRelic** | 遗物基类：EventBus + Query Pipeline 双路线 | [AbstractRelic.h](file:///j:\学习\项目\STS_CPP\src\relic\AbstractRelic.h) |
+| **AbstractPotion** | 药水基类：极简设计，用完即弃 | [AbstractPotion.h](file:///j:\学习\项目\STS_CPP\src\potion\AbstractPotion.h) |
 | **IntentBrain** | AI 决策策略接口 | [IntentBrain.h](file:///j:\学习\项目\STS_CPP\src\intent\IntentBrain.h) |
 
 ---
@@ -155,6 +157,48 @@ base_damage
 **查询表单系统**（[Queries.h](file:///j:\学习\项目\STS_CPP\src\core\Queries.h)）：
 - `VulnerableMultiplierQuery` - 易伤倍率查询
 - `WeakMultiplierQuery` - 虚弱倍率查询
+
+### 2.5 Potion 药水系统
+
+**设计原则**：
+- **极简设计**：遵循卡牌模式，`AbstractPotion` 提供 `use()` 接口，与 `AbstractCard` 并列
+- **游戏实体**：药水作为独立实体存在于 GameState 中，类似 Relic
+- **直接执行**：药水使用通过 `StrengthPotion::use()` 直接 `addAction(ApplyPowerAction)`，不经过 `UsePotionAction`
+- **用完即弃**：药水消耗后由外部直接 `erase` 移除，无需复杂生命周期管理
+
+**AbstractPotion 接口**（[AbstractPotion.h](file:///j:\学习\项目\STS_CPP\src\potion\AbstractPotion.h)）：
+
+```cpp
+class AbstractPotion {
+public:
+    std::string id;
+
+    AbstractPotion(std::string i) : id(i) {}
+    virtual ~AbstractPotion() = default;
+
+    virtual void use(GameState& state) = 0;  // 纯虚，使用后由调用者负责移除
+};
+```
+
+**药水使用流程**：
+
+```
+PlayerActions::usePotion(potion)
+    │
+    └─> potion->use(state)               // 直接触发药水效果
+            │
+            └─> state.addAction(ApplyPowerAction(...))  // 药水效果添加对应 Action
+    │
+    └─> state.potions.erase(potion)      // 用完即弃，O(1) 移除（外部负责）
+```
+
+**内存管理策略**：
+
+| 策略 | 描述 |
+|------|------|
+| **shared_ptr 托管** | GameState::potions 持有 `std::vector<std::shared_ptr<AbstractPotion>>` |
+| **用完即弃** | 药水效果执行后由外部从容器中移除，无需引用计数 |
+| **无悬空风险** | 药水在 Player::obtainPotion 时创建，生命周期严格由 GameState 管理 |
 
 ---
 
@@ -435,6 +479,7 @@ void addActionToFront(std::unique_ptr<AbstractAction> action) {
 | **零全局 RNG** | 所有随机操作必须使用 `rng` 中的隔离 RNG |
 | **内存安全** | 禁止 raw new/delete，使用智能指针；操作实体前检查 `isDead()` |
 | **Erase-Remove 自清理** | EventBus 回调返回 false 自动移除，配合 weak_ptr 使用 |
+| **Potion 用完即弃** | 药水效果执行后立即从 GameState::potions 移除，禁止长期持有 |
 | **四阶段伤害管线** | Power/Relic 通过 `atDamageGive/Receive/FinalGive/FinalReceive` 修饰 |
 
 ---
@@ -501,5 +546,5 @@ void addActionToFront(std::unique_ptr<AbstractAction> action) {
 
 ---
 
-*文档版本：1.0*
-*最后更新：2026-03-20*
+*文档版本：1.1*
+*最后更新：2026-03-25*
