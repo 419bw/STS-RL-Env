@@ -101,12 +101,13 @@
 | 接口签名 | 说明 |
 |---------|------|
 | `void addAction(std::unique_ptr<AbstractAction>)` | 添加 Action 到队列尾部 |
-| `void addActionToFront(std::unique_ptr<AbstractAction>)` | 添加 Action 到队列头部（含 currentAction 插队逻辑） |
+| `void addActionToFront(std::unique_ptr<AbstractAction>)` | 添加 Action 到队列头部（O(1) push_front） |
 | `static void executeUntilBlocked(GameState&, CombatFlow&)` | O(1) 执行循环，驱动队列排空 |
 
 **addActionToFront 行为**：
-- 若 `currentAction` 存在（阻塞态），将 currentAction 移至队列头部，再将新 Action 置入 currentAction
-- 若 `currentAction 为空，直接 push_front
+- 直接将 Action 插入队列头部（O(1)）
+- 插入后，下一轮 `executeUntilBlocked` 会优先执行该 Action
+- **注意**：不会影响正在执行的 `currentAction`（如果有的话）
 - **典型用途**：SBA 全局检查插入的 DamageAction、DeathCheckAction 等高优先级动作
 
 **防死锁看门狗**：

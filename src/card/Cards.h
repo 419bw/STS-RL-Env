@@ -39,3 +39,12 @@ public:
     ShurikenCard() : AbstractCard("Shuriken", 1, CardType::ATTACK, CardTarget::RANDOM) {}
     void use(GameState& state, std::shared_ptr<Character> target) override;
 };
+
+// ==========================================
+// 具体卡牌：痛击 (Pain)
+// ==========================================
+class PainCard : public AbstractCard {
+public:
+    PainCard() : AbstractCard("Pain", 2, CardType::ATTACK, CardTarget::ENEMY) {}
+    void use(GameState& state, std::shared_ptr<Character> target) override;
+};

@@ -18,9 +18,6 @@ void StrikeCard::use(GameState& state, std::shared_ptr<Character> target) {
     STS_LOG(state, "打出了 打击!\n");
     
     if (target) {
-        state.addAction(std::make_unique<ApplyPowerAction>(
-            state.player, target, std::make_shared<VulnerablePower>(1)));
-        
         state.addAction(std::make_unique<DamageAction>(
             state.player, target, 6, DamageType::ATTACK));
     }
@@ -70,5 +67,21 @@ void ShurikenCard::use(GameState& state, std::shared_ptr<Character> target) {
     for (int i = 0; i < 3; ++i) {
         state.addAction(std::make_unique<RandomDamageAction>(
             state.player, 3, DamageType::ATTACK));
+    }
+}
+
+// ==========================================
+// PainCard 实现
+//
+// 效果：造成 8 点伤害，然后施加 2 层易伤
+// ==========================================
+void PainCard::use(GameState& state, std::shared_ptr<Character> target) {
+    STS_LOG(state, "打出了 痛击!\n");
+
+    if (target) {
+        state.addAction(std::make_unique<DamageAction>(
+            state.player, target, 8, DamageType::ATTACK));
+        state.addAction(std::make_unique<ApplyPowerAction>(
+            state.player, target, std::make_shared<VulnerablePower>(2)));
     }
 }

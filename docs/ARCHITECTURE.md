@@ -390,23 +390,16 @@ static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
 - 当 Action::update() 返回 false（阻塞）时，保留 currentAction，退出循环等待下一帧继续
 - 下次调用 executeUntilBlocked 时，若 currentAction 存在则直接继续执行
 
-**addActionToFront 正确工作原理**：
+**addActionToFront 工作原理**：
 ```cpp
 // GameState.h
 void addActionToFront(std::unique_ptr<AbstractAction> action) {
-    if (currentAction) {
-        // 将当前执行中的 Action 移出，插入到队列头部
-        auto temp = std::move(currentAction);
-        actionQueue.push_front(std::move(temp));
-        currentAction = std::move(action);
-    } else {
-        actionQueue.push_front(std::move(action));
-    }
+    actionQueue.push_front(std::move(action));
 }
 ```
-- 若 `currentAction` 存在（当前有 Action 正在阻塞），将 currentAction 移出并插入队列头部，再将新 Action 放入 currentAction
-- 若 `currentAction` 为空，直接 push_front
-- **设计意图**：允许 SBA 等高优先级系统插入紧急 Action，使其在当前阻塞 Action 之后、下一个 Action 之前执行
+- 直接将 Action 插入队列头部（O(1)）
+- 插入后，下一轮 `executeUntilBlocked` 会优先执行该 Action
+- **注意**：不会影响正在执行的 `currentAction`（如果有的话）
 
 **防死锁看门狗机制**：
 - 1000 次循环上限，防止极端情况下无限循环
