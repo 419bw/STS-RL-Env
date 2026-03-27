@@ -123,9 +123,10 @@ void test_UsePotion_EnemyTarget_BlocksSelfTarget() {
     auto monster = std::make_shared<Monster>("TestMonster", 30);
     state.monsters.push_back(monster);
 
-    potion->use(state, state.player);
+    CombatFlow flow;
+    bool result = PlayerActions::usePotion(state, flow, potion, state.player);
 
-    TEST_ASSERT(!state.isActionQueueEmpty(), "ENEMY target should block self-targeting");
+    TEST_ASSERT(result == false, "ENEMY target should block self-targeting");
 }
 
 void test_UsePotion_RemovesPotionFromState() {

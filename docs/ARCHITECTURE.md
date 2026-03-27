@@ -482,7 +482,7 @@ void addActionToFront(std::unique_ptr<AbstractAction> action) {
 **特性**：
 - 使用 Erase-Remove Idiom 自动清理僵尸监听者
 - 配合 `weak_ptr` 实现安全的生命周期管理
-- 共 23 种事件类型（见 [Types.h#L38-L68](file:///j:\学习\项目\STS_CPP\src\core\Types.h#L38-L68)）
+- 共 24 种事件类型（见 [Types.h#L38-L68](file:///j:\学习\项目\STS_CPP\src\core\Types.h#L38-L68)）
 
 ### 5.5 Character.h - 角色基类
 

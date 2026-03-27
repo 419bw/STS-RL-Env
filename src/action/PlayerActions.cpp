@@ -246,6 +246,8 @@ bool PlayerActions::usePotion(GameState& state, CombatFlow& flow, std::shared_pt
 
     STS_LOG(state, "[玩家动作] 使用药水: " << potion->id << "\n");
 
+    state.eventBus.publish(EventType::ON_POTION_USED, state, potion.get());
+
     potion->use(state, target);
     state.potions.erase(it);
 

@@ -81,7 +81,10 @@ enum class EventType {
     ON_SHUFFLE,           // 洗牌时
     ON_CARD_DRAWN,        // 抽牌时
     ON_CARD_DISCARDED,    // 卡牌进入弃牌堆时
-    ON_CARD_EXHAUSTED     // 卡牌进入消耗堆时
+    ON_CARD_EXHAUSTED,     // 卡牌进入消耗堆时
+
+    // 药水事件 (由 PlayerActions 发布)
+    ON_POTION_USED        // 药水被使用时
 };
 
 // 状态效果类型
