@@ -4,6 +4,7 @@
 #include "src/test/TestDamagePipeline.cpp"
 #include "src/test/TestMonster.cpp"
 #include "src/test/TestRandomDamageAction.cpp"
+#include "src/test/TestPotionSystem.cpp"
 
 int main() {
     std::cout << "========================================\n";
@@ -22,6 +23,8 @@ int main() {
     MonsterTests::runAllTests();
     std::cout << "\n";
     RandomDamageActionTests::runAllTests();
+    std::cout << "\n";
+    PotionSystemTests::runAllTests();
     std::cout << "\n";
 
     std::cout << "\n========================================\n";

@@ -1,0 +1,8 @@
+{
+  "name": "run_pipeline",
+  "description": "Intelligent Router & Security Pipeline Commander for complex tasks.",
+  "version": "2.2",
+  "author": "System",
+  "instructions": "SKILL.md",
+  "parameters": []
+}

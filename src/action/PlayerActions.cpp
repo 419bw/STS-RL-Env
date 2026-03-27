@@ -3,6 +3,7 @@
 #include "src/flow/CombatFlow.h"
 #include "src/action/Actions.h"
 #include "src/card/AbstractCard.h"
+#include "src/potion/AbstractPotion.h"
 #include "src/system/ActionSystem.h"
 #include "src/utils/Logger.h"
 #include <algorithm>
@@ -67,6 +68,10 @@ bool PlayerActions::playCard(GameState& state,
         case CardTarget::ENEMY:
             if (!target || target->isDead()) {
                 STS_LOG(state, "[警告] " << card->id << " 需要指定一个存活的敌人目标！\n");
+                return false;
+            }
+            if (target == state.player) {
+                STS_LOG(state, "[安全拦截] " << card->id << " 是 ENEMY 类型，不能以玩家为目标！\n");
                 return false;
             }
             break;
@@ -195,4 +200,56 @@ void PlayerActions::endTurn(GameState& state, CombatFlow& flow) {
     } else {
         STS_LOG(state, "[警告] 当前状态不允许结束回合，或动作尚未结算完毕！\n");
     }
+}
+
+bool PlayerActions::usePotion(GameState& state, CombatFlow& flow, std::shared_ptr<AbstractPotion> potion, std::shared_ptr<Character> target) {
+    if (state.currentPhase != StatePhase::PLAYING_CARD) {
+        STS_LOG(state, "[警告] 系统正在等待你做出选择，无法使用药水！\n");
+        return false;
+    }
+
+    if (!state.isPlayerTurn) {
+        STS_LOG(state, "[警告] 当前不是玩家回合，无法使用药水！\n");
+        return false;
+    }
+
+    auto it = std::find(state.potions.begin(), state.potions.end(), potion);
+    if (it == state.potions.end()) {
+        STS_LOG(state, "[警告] 未找到该药水！\n");
+        return false;
+    }
+
+    switch (potion->targetType) {
+        case PotionTarget::ENEMY:
+            if (!target || target->isDead()) {
+                STS_LOG(state, "[警告] " << potion->id << " 需要指定一个存活的敌人目标！\n");
+                return false;
+            }
+            if (target == state.player) {
+                STS_LOG(state, "[安全拦截] " << potion->id << " 是 ENEMY 类型，不能以玩家为目标！\n");
+                return false;
+            }
+            break;
+        case PotionTarget::ALL_ENEMY:
+            target = nullptr;
+            break;
+        case PotionTarget::SELF:
+            target = state.player;
+            break;
+        case PotionTarget::NONE:
+            target = nullptr;
+            break;
+        default:
+            STS_LOG(state, "[错误] 未知 PotionTarget 类型！\n");
+            return false;
+    }
+
+    STS_LOG(state, "[玩家动作] 使用药水: " << potion->id << "\n");
+
+    potion->use(state, target);
+    state.potions.erase(it);
+
+    ActionSystem::executeUntilBlocked(state, flow);
+
+    return true;
 }

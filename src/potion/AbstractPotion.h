@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include "src/core/Types.h"
 #include "src/core/ForwardDeclarations.h"
 
 // ==========================================
@@ -11,10 +12,11 @@
 class AbstractPotion {
 public:
     std::string id;
+    PotionTarget targetType;
 
-    AbstractPotion(std::string i) : id(i) {}
+    AbstractPotion(std::string i, PotionTarget target = PotionTarget::SELF)
+        : id(i), targetType(target) {}
     virtual ~AbstractPotion() = default;
 
-    // 使用药水
-    virtual void use(GameState& state) = 0;
+    virtual void use(GameState& state, std::shared_ptr<Character> target = nullptr) = 0;
 };

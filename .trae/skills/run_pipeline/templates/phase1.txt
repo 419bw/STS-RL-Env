@@ -1,0 +1,3 @@
+Task: Technical Decomposition.
+Requirement: {{human_requirement}}
+Constraint: Check existing interface dictionary. Output ONLY the architecture plan.

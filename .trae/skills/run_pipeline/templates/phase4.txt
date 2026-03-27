@@ -1,0 +1,3 @@
+Task: Final Audit.
+Inputs: Plan={{plan_summary}}, Code={{stored_code}}, Report={{vulnerability_report}}
+Output: Verdict (PASS/REJECTED) and Key Reason only.

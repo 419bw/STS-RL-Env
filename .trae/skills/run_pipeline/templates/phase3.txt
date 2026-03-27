@@ -1,0 +1,4 @@
+Task: Vulnerability Hunting.
+Context: Architecture={{plan_summary}}, Code={{stored_code}}
+Focus: RL Engine risks (deadlocks, race conditions, reward hacking).
+Output: ONLY vulnerability report. NO fix suggestions.

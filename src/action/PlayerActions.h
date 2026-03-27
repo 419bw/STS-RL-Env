@@ -43,4 +43,11 @@ public:
     
     // 结束回合
     static void endTurn(GameState& state, CombatFlow& flow);
+
+    // 使用药水
+    // 只在 currentPhase == PLAYING_CARD && isPlayerTurn == true 时可用
+    static bool usePotion(GameState& state,
+                         CombatFlow& flow,
+                         std::shared_ptr<AbstractPotion> potion,
+                         std::shared_ptr<Character> target = nullptr);
 };

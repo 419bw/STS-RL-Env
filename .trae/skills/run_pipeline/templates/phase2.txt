@@ -1,0 +1,3 @@
+Task: C++ Implementation.
+Input Plan: {{approved_plan}}
+Constraint: Follow low-level C++ specs strictly. Output ONLY code blocks. No explanations.

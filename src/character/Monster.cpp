@@ -5,7 +5,7 @@
 #include "src/utils/Logger.h"
 #include "src/intent/Intent.h"
 
-Monster::Monster(std::string n, int hp) : Character(n, hp), deathReported(false) {}
+Monster::Monster(std::string n, int hp) : Character(n, hp), deathReported(false), brain(nullptr) {}
 
 void Monster::rollIntent(GameState& state) {
     if (brain) {

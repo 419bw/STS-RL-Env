@@ -25,6 +25,14 @@ enum class CardTarget {
     RANDOM          // 随机敌人
 };
 
+// 药水目标类型
+enum class PotionTarget {
+    ENEMY,          // 单体敌人
+    ALL_ENEMY,      // 全体敌人
+    SELF,           // 自身
+    NONE            // 无目标
+};
+
 // 战斗状态枚举：战斗流程的生命周期
 enum class CombatState {
     BATTLE_START,        // 战斗开始 (洗牌、触发初始遗物)

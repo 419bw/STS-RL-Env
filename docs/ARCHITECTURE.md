@@ -162,9 +162,20 @@ base_damage
 
 **设计原则**：
 - **极简设计**：遵循卡牌模式，`AbstractPotion` 提供 `use()` 接口，与 `AbstractCard` 并列
+- **目标系统**：支持 ENEMY/ALL_ENEMY/SELF/NONE 四种目标类型
 - **游戏实体**：药水作为独立实体存在于 GameState 中，类似 Relic
-- **直接执行**：药水使用通过 `StrengthPotion::use()` 直接 `addAction(ApplyPowerAction)`，不经过 `UsePotionAction`
 - **用完即弃**：药水消耗后由外部直接 `erase` 移除，无需复杂生命周期管理
+
+**PotionTarget 枚举**（[Types.h](file:///j:\学习\项目\STS_CPP\src\core\Types.h)）：
+
+```cpp
+enum class PotionTarget {
+    ENEMY,      // 单体敌人
+    ALL_ENEMY,  // 全体敌人
+    SELF,       // 自身（玩家）
+    NONE        // 无目标
+};
+```
 
 **AbstractPotion 接口**（[AbstractPotion.h](file:///j:\学习\项目\STS_CPP\src\potion\AbstractPotion.h)）：
 
@@ -172,24 +183,39 @@ base_damage
 class AbstractPotion {
 public:
     std::string id;
+    PotionTarget targetType;
 
-    AbstractPotion(std::string i) : id(i) {}
+    AbstractPotion(std::string i, PotionTarget target = PotionTarget::SELF)
+        : id(i), targetType(target) {}
     virtual ~AbstractPotion() = default;
 
-    virtual void use(GameState& state) = 0;  // 纯虚，使用后由调用者负责移除
+    virtual void use(GameState& state, std::shared_ptr<Character> target = nullptr) = 0;
 };
 ```
 
 **药水使用流程**：
 
 ```
-PlayerActions::usePotion(potion)
+PlayerActions::usePotion(potion, target)
     │
-    └─> potion->use(state)               // 直接触发药水效果
+    ├─> 目标校验（switch targetType）
+    │       ENEMY: 验证 target 存活且非玩家
+    │       SELF:  target = state.player
+    │       ALL_ENEMY/NONE: target = nullptr
+    │
+    └─> potion->use(state, target)      // 触发药水效果
             │
-            └─> state.addAction(ApplyPowerAction(...))  // 药水效果添加对应 Action
+            └─> state.addAction(...)    // 添加对应 Action
     │
-    └─> state.potions.erase(potion)      // 用完即弃，O(1) 移除（外部负责）
+    └─> state.potions.erase(potion)      // 用完即弃，O(1) 移除
+```
+
+**PlayerActions::usePotion 签名**：
+
+```cpp
+static bool usePotion(GameState& state, CombatFlow& flow,
+                      std::shared_ptr<AbstractPotion> potion,
+                      std::shared_ptr<Character> target = nullptr);
 ```
 
 **内存管理策略**：
@@ -197,8 +223,8 @@ PlayerActions::usePotion(potion)
 | 策略 | 描述 |
 |------|------|
 | **shared_ptr 托管** | GameState::potions 持有 `std::vector<std::shared_ptr<AbstractPotion>>` |
-| **用完即弃** | 药水效果执行后由外部从容器中移除，无需引用计数 |
-| **无悬空风险** | 药水在 Player::obtainPotion 时创建，生命周期严格由 GameState 管理 |
+| **用完即弃** | 药水效果执行后由 PlayerActions 外部从容器中移除 |
+| **无悬空风险** | 药水生命周期严格由 GameState 管理 |
 
 ---
 
