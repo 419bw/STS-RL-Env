@@ -5,6 +5,13 @@
 #include "src/utils/Logger.h"
 #include <iostream>
 
+// ==========================================
+// CustomVajraRelic 实现
+// 
+// 回调返回值：
+// - true：遗物存活，继续监听
+// - false：遗物已销毁，自动移除监听者
+// ==========================================
 void CustomVajraRelic::onEquip(GameEngine& engine, Character* target) {
     AbstractRelic::onEquip(engine, target);
 
@@ -25,6 +32,9 @@ void CustomVajraRelic::onEquip(GameEngine& engine, Character* target) {
         });
 }
 
+// ==========================================
+// ChemicalXRelic 实现
+// ==========================================
 void ChemicalXRelic::onEquip(GameEngine& engine, Character* target) {
     AbstractRelic::onEquip(engine, target);
 

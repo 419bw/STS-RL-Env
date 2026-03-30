@@ -12,8 +12,8 @@ void Monster::rollIntent(GameEngine& engine) {
     if (brain) {
         Intent oldIntent = currentIntent;
         currentIntent = brain->decide(state, this);
-        if (!currentIntent.target) {
-            currentIntent.target = state.player.get();
+        if (!currentIntent.target.lock()) {
+            currentIntent.target = state.player;
         }
         STS_LOG(state, "    [" << name << "] 刷新意图: " << Intent_DebugString(currentIntent) << "\n");
     }
@@ -41,11 +41,11 @@ void Monster::takeTurn(GameEngine& engine) {
     STS_LOG(state, "    [" << name << "] 开始回合，意图: " << Intent_DebugString(currentIntent) << "\n");
 
     if (currentIntent.type == IntentType::ATTACK || currentIntent.type == IntentType::ATTACK_DEFEND) {
-        if (!currentIntent.target || currentIntent.target->isDead()) {
+        auto targetPtr = currentIntent.target.lock();
+        if (!targetPtr || targetPtr->isDead()) {
             STS_LOG(state, "    [" << name << "] 攻击意图但目标为空或已死亡，跳过攻击\n");
         } else {
-            auto targetPtr = currentIntent.target->shared_from_this();
-            STS_LOG(state, "    [" << name << "] 攻击 " << currentIntent.target->name
+            STS_LOG(state, "    [" << name << "] 攻击 " << targetPtr->name
                 << " x" << currentIntent.hit_count << " (伤害:" << currentIntent.base_damage << ")\n");
             for (int i = 0; i < currentIntent.hit_count; ++i) {
                 engine.actionManager.addAction(std::make_unique<DamageAction>(

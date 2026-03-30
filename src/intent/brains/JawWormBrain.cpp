@@ -36,7 +36,8 @@ Intent JawWormBrain::decide(CombatState& combat, Monster* owner) {
     if (firstMove) {
         firstMove = false;
         recordMoveId(CHOMP);
-        return Intent{IntentType::ATTACK, chompDmg, 1, 0, combat.player.get(), true, CHOMP, "Chomp"};
+        return Intent(IntentType::ATTACK, chompDmg, 1, 0, combat.player)
+               .withMove(CHOMP, "Chomp");
     }
 
     int randomNum = std::uniform_int_distribution<int>(0, 99)(combat.combatRng.monsterRng);
@@ -49,32 +50,41 @@ Intent JawWormBrain::decideNextMove(CombatState& combat, Monster* owner, int ran
     if (randomNum < 25) {
         if (lastMove(CHOMP)) {
             if (std::bernoulli_distribution(PROB_BELLOW_VS_THRASH)(combat.combatRng.monsterRng)) {
-                return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
+                return Intent(IntentType::BUFF, 0, 1, bellowBlock, {})
+                       .withMove(BELLOW, "Bellow");
             } else {
-                return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player.get(), true, THRASH, "Thrash"};
+                return Intent(IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player)
+                       .withMove(THRASH, "Thrash");
             }
         } else {
-            return Intent{IntentType::ATTACK, chompDmg, 1, 0, combat.player.get(), true, CHOMP, "Chomp"};
+            return Intent(IntentType::ATTACK, chompDmg, 1, 0, combat.player)
+                   .withMove(CHOMP, "Chomp");
         }
     } else if (randomNum < 55) {
         if (lastTwoMoves(THRASH)) {
             if (std::bernoulli_distribution(PROB_CHOMP_VS_BELLOW_FROM_THRASH)(combat.combatRng.monsterRng)) {
-                return Intent{IntentType::ATTACK, chompDmg, 1, 0, combat.player.get(), true, CHOMP, "Chomp"};
+                return Intent(IntentType::ATTACK, chompDmg, 1, 0, combat.player)
+                       .withMove(CHOMP, "Chomp");
             } else {
-                return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
+                return Intent(IntentType::BUFF, 0, 1, bellowBlock, {})
+                       .withMove(BELLOW, "Bellow");
             }
         } else {
-            return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player.get(), true, THRASH, "Thrash"};
+            return Intent(IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player)
+                   .withMove(THRASH, "Thrash");
         }
     } else {
         if (lastMove(BELLOW)) {
             if (std::bernoulli_distribution(PROB_CHOMP_VS_THRASH_FROM_BELLOW)(combat.combatRng.monsterRng)) {
-                return Intent{IntentType::ATTACK, chompDmg, 1, 0, combat.player.get(), true, CHOMP, "Chomp"};
+                return Intent(IntentType::ATTACK, chompDmg, 1, 0, combat.player)
+                       .withMove(CHOMP, "Chomp");
             } else {
-                return Intent{IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player.get(), true, THRASH, "Thrash"};
+                return Intent(IntentType::ATTACK_DEFEND, thrashDmg, 1, thrashBlock, combat.player)
+                       .withMove(THRASH, "Thrash");
             }
         } else {
-            return Intent{IntentType::BUFF, 0, 1, bellowBlock, owner, true, BELLOW, "Bellow"};
+            return Intent(IntentType::BUFF, 0, 1, bellowBlock, {})
+                   .withMove(BELLOW, "Bellow");
         }
     }
 }

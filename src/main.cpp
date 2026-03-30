@@ -42,9 +42,9 @@ int main() {
     // Generic Monster - FixedBrain 对照组
     auto generic1 = std::make_shared<Monster>("先锋怪", 40);
     generic1->setBrain(std::make_shared<FixedBrain>(std::vector<Intent>{
-        {IntentType::ATTACK, 8, 1, 0, nullptr, true, 1, " Strike"},
-        {IntentType::DEFEND, 0, 0, 5, nullptr, true, 2, " Guard"},
-        {IntentType::ATTACK, 12, 1, 0, nullptr, true, 3, " Heavy Strike"}
+        Intent(IntentType::ATTACK, 8, 1, 0, {}).withMove(1, "Strike"),
+        Intent(IntentType::DEFEND, 0, 0, 5, {}).withMove(2, "Guard"),
+        Intent(IntentType::ATTACK, 12, 1, 0, {}).withMove(3, "Heavy Strike")
     }));
     STS_LOG(*runState, "  [AI类型] 先锋怪: FixedBrain (ATTACK→DEFEND→ATTACK 循环)\n");
     STS_LOG(*runState, "    HP: " << generic1->current_hp << "/" << generic1->max_hp << "\n");
@@ -52,9 +52,9 @@ int main() {
     // Generic Monster 2
     auto generic2 = std::make_shared<Monster>("后卫怪", 35);
     generic2->setBrain(std::make_shared<FixedBrain>(std::vector<Intent>{
-        {IntentType::DEFEND, 0, 0, 8, nullptr, true, 1, " Brace"},
-        {IntentType::ATTACK, 6, 2, 0, nullptr, true, 2, " Double Strike"},
-        {IntentType::ATTACK, 10, 1, 0, nullptr, true, 3, " Slam"}
+        Intent(IntentType::DEFEND, 0, 0, 8, {}).withMove(1, "Brace"),
+        Intent(IntentType::ATTACK, 6, 2, 0, {}).withMove(2, "Double Strike"),
+        Intent(IntentType::ATTACK, 10, 1, 0, {}).withMove(3, "Slam")
     }));
     STS_LOG(*runState, "  [AI类型] 后卫怪: FixedBrain (DEFEND→ATTACK×2→ATTACK 循环)\n");
     STS_LOG(*runState, "    HP: " << generic2->current_hp << "/" << generic2->max_hp << "\n");

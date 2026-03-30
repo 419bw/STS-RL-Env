@@ -110,7 +110,7 @@ void test_Monster_rollIntent_WithBrain() {
     auto monster = engine.combatState->monsters[0];
 
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Attack"}
+        Intent{IntentType::ATTACK, 10, 1, 0, engine.combatState->player}
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
     monster->setBrain(brain);
@@ -139,7 +139,7 @@ void test_Monster_takeTurn_Attack() {
     auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, player, true, 1, "Attack"}
+        Intent{IntentType::ATTACK, 10, 1, 0, engine.combatState->player}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
     monster->rollIntent(engine);
@@ -159,7 +159,7 @@ void test_Monster_takeTurn_Attack_MultipleHits() {
     auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 3, 0, player, true, 1, "Triple Hit"}
+        Intent{IntentType::ATTACK, 10, 3, 0, engine.combatState->player}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
     monster->rollIntent(engine);
@@ -178,7 +178,7 @@ void test_Monster_takeTurn_Defend() {
     auto monster = engine.combatState->monsters[0];
 
     std::vector<Intent> sequence = {
-        {IntentType::DEFEND, 0, 1, 15, nullptr, true, 1, "Defend"}
+        Intent{IntentType::DEFEND, 0, 1, 15, {}}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
     monster->rollIntent(engine);
@@ -197,7 +197,7 @@ void test_Monster_takeTurn_AttackDefend() {
     auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK_DEFEND, 10, 1, 8, player, true, 1, "Strike and Guard"}
+        Intent{IntentType::ATTACK_DEFEND, 10, 1, 8, engine.combatState->player}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
     monster->rollIntent(engine);
@@ -259,7 +259,7 @@ void test_JawWorm_Thrash_AttackAndBlock() {
 
     auto player = engine.combatState->player.get();
     std::vector<Intent> thrashIntent = {
-        {IntentType::ATTACK_DEFEND, 7, 1, 5, player, true, JawWormBrain::THRASH, "Thrash"}
+        Intent{IntentType::ATTACK_DEFEND, 7, 1, 5, engine.combatState->player}
     };
     auto thrashBrain = std::make_shared<FixedBrain>(thrashIntent);
     wormPtr->setBrain(thrashBrain);
@@ -283,9 +283,9 @@ void test_IntentBrain_MoveHistory_LastMove() {
 
     JawWorm worm(0);
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Move1"},
-        {IntentType::DEFEND, 0, 1, 5, nullptr, true, 2, "Move2"},
-        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 3, "Move3"}
+        Intent(IntentType::ATTACK, 10, 1, 0, engine.combatState->player).withMove(1, "Attack1"),
+        Intent(IntentType::DEFEND, 0, 1, 5, {}).withMove(2, "Defend"),
+        Intent(IntentType::ATTACK, 10, 1, 0, engine.combatState->player).withMove(3, "Attack2")
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
 
@@ -309,9 +309,9 @@ void test_IntentBrain_MoveHistory_LastTwoMoves() {
 
     JawWorm worm(0);
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Move1"},
-        {IntentType::DEFEND, 0, 1, 5, nullptr, true, 2, "Move2"},
-        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 3, "Move3"}
+        Intent(IntentType::ATTACK, 10, 1, 0, engine.combatState->player).withMove(1, "Attack1"),
+        Intent(IntentType::DEFEND, 0, 1, 5, {}).withMove(2, "Defend"),
+        Intent(IntentType::ATTACK, 10, 1, 0, engine.combatState->player).withMove(3, "Attack2")
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
 

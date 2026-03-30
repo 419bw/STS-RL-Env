@@ -32,10 +32,26 @@ struct Intent {
     int base_damage = -1;
     int hit_count = 1;
     int effect_value = 0;
-    Character* target = nullptr;
+    std::weak_ptr<Character> target;
     bool visible = true;
     int move_id = -1;
     std::string move_name;
+
+    Intent() = default;
+
+    Intent(IntentType t, int dmg, int hits, int effect, std::weak_ptr<Character> tgt)
+        : type(t), base_damage(dmg), hit_count(hits), effect_value(effect), target(std::move(tgt)) {}
+
+    Intent& withMove(int id, const std::string& name) {
+        this->move_id = id;
+        this->move_name = name;
+        return *this;
+    }
+
+    Intent& setVisible(bool vis) {
+        this->visible = vis;
+        return *this;
+    }
 };
 
 std::string Intent_DebugString(const Intent& intent);

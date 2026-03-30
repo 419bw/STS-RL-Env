@@ -29,9 +29,11 @@ src/
 
 | 模块 | 职责 | 关键文件 |
 |------|------|----------|
-| **GameState** | 纯数据容器：实体、EventBus、ActionQueue、牌堆 | [GameState.h](file:///j:\学习\项目\STS_CPP\src\gamestate\GameState.h) |
+| **GameEngine** | 顶层引擎：管理 runState/combatState/actionManager/eventBus | [GameEngine.h](file:///j:\学习\项目\STS_CPP\src\engine\GameEngine.h) |
+| **CombatState** | 战斗层数据容器：player, monsters, potions, 牌堆, rng（替代旧 GameState） | [CombatState.h](file:///j:\学习\项目\STS_CPP\src\state\CombatState.h) |
+| **RunState** | 持久层数据容器：masterDeck, gold, keys, relics | [RunState.h](file:///j:\学习\项目\STS_CPP\src\state\RunState.h) |
 | **CombatFlow** | 战斗状态机：管理阶段跃迁、发布宏观事件 | [CombatFlow.h](file:///j:\学习\项目\STS_CPP\src\flow\CombatFlow.h) |
-| **ActionSystem** | 动作执行器：驱动 Action 队列流转 | [ActionSystem.h](file:///j:\学习\项目\STS_CPP\src\system\ActionSystem.h) |
+| **ActionManager** | 动作执行器：驱动 Action 队列流转 | [ActionManager.h](file:///j:\学习\项目\STS_CPP\src\action\ActionManager.h) |
 | **EventBus** | 事件总线：订阅/发布模式，自动清理僵尸监听者 | [EventBus.h](file:///j:\学习\项目\STS_CPP\src\event\EventBus.h) |
 | **Character** | 实体基类：属性计算、Power/Relic 管理 | [Character.h](file:///j:\学习\项目\STS_CPP\src\character\Character.h) |
 | **AbstractAction** | 动作基类：所有状态变更的原子单元 | [AbstractAction.h](file:///j:\学习\项目\STS_CPP\src\action\AbstractAction.h) |
@@ -40,6 +42,8 @@ src/
 | **AbstractRelic** | 遗物基类：EventBus + Query Pipeline 双路线 | [AbstractRelic.h](file:///j:\学习\项目\STS_CPP\src\relic\AbstractRelic.h) |
 | **AbstractPotion** | 药水基类：极简设计，用完即弃 | [AbstractPotion.h](file:///j:\学习\项目\STS_CPP\src\potion\AbstractPotion.h) |
 | **IntentBrain** | AI 决策策略接口 | [IntentBrain.h](file:///j:\学习\项目\STS_CPP\src\intent\IntentBrain.h) |
+| **GameState** | 【遗留】旧战斗数据容器，已被 CombatState 替代 | [GameState.h](file:///j:\学习\项目\STS_CPP\src\gamestate\GameState.h) |
+| **ActionSystem** | 【遗留】旧动作执行器，已被 ActionManager 替代（无实际调用） | [ActionSystem.h](file:///j:\学习\项目\STS_CPP\src\system\ActionSystem.h) |
 
 ---
 
@@ -54,14 +58,14 @@ src/
 class AbstractAction {
 public:
     virtual ~AbstractAction() = default;
-    virtual bool update(GameState& state) = 0;  // 返回 true 表示完成
+    virtual bool update(GameEngine& engine) = 0;  // 返回 true 表示完成
 };
 ```
 
 **执行流程**：
 1. CombatFlow 推动状态跃迁
-2. 各种来源（Card::use()、Brain::decide()）向 `actionQueue` 添加 Action
-3. ActionSystem::executeUntilBlocked() 循环弹出并执行 Action
+2. 各种来源（Card::use()、Brain::decide()）向 `engine.actionManager` 添加 Action
+3. ActionManager::executeUntilBlocked() 循环弹出并执行 Action
 4. 每个 Action 执行完毕后进行 SBA 全局巡视
 
 **Action 类型**（[Actions.h](file:///j:\学习\项目\STS_CPP\src\action\Actions.h)）：
@@ -81,15 +85,15 @@ public:
 ```
 RandomDamageAction::update()
     │
-    ├─ 使用 state.rng.combatRng 随机选择目标
+    ├─ 使用 engine.combatState->combatRng 随机选择目标
     │
     └─ 创建 DamageAction 委托执行
             ↓
-        ActionQueue.add(DamageAction)  // 子 Action 入队
+        engine.actionManager.addAction(DamageAction)  // 子 Action 入队
 
 架构意义：
 - 父 Action 在同一帧内完成（返回 true）
-- 子 Action 由 ActionSystem 后续执行
+- 子 Action 由 ActionManager 后续执行
 - 这与 RequestCardSelectionAction 的阻塞模式形成对比
 ```
 
@@ -100,8 +104,8 @@ RandomDamageAction::update()
 ```cpp
 class EventBus {
     // 回调返回 false 自动移除（处理僵尸监听者）
-    void subscribe(EventType type, std::function<bool(GameState&, void*)> callback);
-    void publish(EventType type, GameState& state, void* context = nullptr);
+    void subscribe(EventType type, std::function<bool(GameEngine&, void*)> callback);
+    void publish(EventType type, GameEngine& engine, void* context = nullptr);
 };
 ```
 
@@ -120,7 +124,7 @@ class EventBus {
 ```cpp
 class IntentBrain {
 public:
-    virtual Intent decide(GameState& state, Monster* owner) = 0;
+    virtual Intent decide(CombatState& combat, Monster* owner) = 0;
     virtual void initializeStats(int ascensionLevel);
     virtual void reset();
 };
@@ -131,6 +135,37 @@ public:
 - `RandomBrain` - 随机选择
 - `AdaptiveBrain` - 自适应（根据血量调整）
 - `JawWormBrain` - 锯颚虫专属行为
+
+**Intent 数据结构**（[Intent.h](file:///j:\学习\项目\STS_CPP\src\intent\Intent.h)）：
+
+```cpp
+struct Intent {
+    IntentType type = IntentType::ATTACK;
+    int base_damage = -1;
+    int hit_count = 1;
+    int effect_value = 0;
+    std::weak_ptr<Character> target;  // 弱引用，避免悬空指针
+    bool visible = true;
+    int move_id = -1;                 // AI历史追踪用
+    std::string move_name;
+
+    // 流式接口
+    Intent& withMove(int id, const std::string& name);
+    Intent& setVisible(bool vis);
+};
+```
+
+**Intent target 安全语义**：
+- 使用 `std::weak_ptr<Character>` 避免悬空指针
+- 当目标死亡后自动失效，需使用 `target.lock()` 验证
+- 与"实体可能在下一微秒死亡"架构原则一致
+
+**流式接口使用示例**：
+```cpp
+Intent(IntentType::ATTACK, 12, 1, 0, combat.player)
+    .withMove(CHOMP, "Chomp")
+    .setVisible(true);
+```
 
 ### 2.4 Power/Relic 系统
 
@@ -163,7 +198,7 @@ base_damage
 **设计原则**：
 - **极简设计**：遵循卡牌模式，`AbstractPotion` 提供 `use()` 接口，与 `AbstractCard` 并列
 - **目标系统**：支持 ENEMY/ALL_ENEMY/SELF/NONE 四种目标类型
-- **游戏实体**：药水作为独立实体存在于 GameState 中，类似 Relic
+- **游戏实体**：药水作为独立实体存在于 RunState 中，类似 Relic
 - **用完即弃**：药水消耗后由外部直接 `erase` 移除，无需复杂生命周期管理
 
 **PotionTarget 枚举**（[Types.h](file:///j:\学习\项目\STS_CPP\src\core\Types.h)）：
@@ -189,31 +224,31 @@ public:
         : id(i), targetType(target) {}
     virtual ~AbstractPotion() = default;
 
-    virtual void use(GameState& state, std::shared_ptr<Character> target = nullptr) = 0;
+    virtual void use(GameEngine& engine, std::shared_ptr<Character> target = nullptr) = 0;
 };
 ```
 
 **药水使用流程**：
 
 ```
-PlayerActions::usePotion(potion, target)
+PlayerActions::usePotion(engine, flow, potion, target)
     │
     ├─> 目标校验（switch targetType）
     │       ENEMY: 验证 target 存活且非玩家
-    │       SELF:  target = state.player
+    │       SELF:  target = engine.combatState->player
     │       ALL_ENEMY/NONE: target = nullptr
     │
-    └─> potion->use(state, target)      // 触发药水效果
+    └─> potion->use(engine, target)           // 触发药水效果
             │
-            └─> state.addAction(...)    // 添加对应 Action
+            └─> engine.actionManager.addAction(...)  // 添加对应 Action
     │
-    └─> state.potions.erase(potion)      // 用完即弃，O(1) 移除
+    └─> engine.runState->potions.erase(potion) // 用完即弃，O(1) 移除
 ```
 
 **PlayerActions::usePotion 签名**：
 
 ```cpp
-static bool usePotion(GameState& state, CombatFlow& flow,
+static bool usePotion(GameEngine& engine, CombatFlow& flow,
                       std::shared_ptr<AbstractPotion> potion,
                       std::shared_ptr<Character> target = nullptr);
 ```
@@ -222,9 +257,9 @@ static bool usePotion(GameState& state, CombatFlow& flow,
 
 | 策略 | 描述 |
 |------|------|
-| **shared_ptr 托管** | GameState::potions 持有 `std::vector<std::shared_ptr<AbstractPotion>>` |
+| **shared_ptr 托管** | RunState::potions 持有 `std::vector<std::shared_ptr<AbstractPotion>>` |
 | **用完即弃** | 药水效果执行后由 PlayerActions 外部从容器中移除 |
-| **无悬空风险** | 药水生命周期严格由 GameState 管理 |
+| **无悬空风险** | 药水生命周期严格由 RunState 管理 |
 
 ---
 
@@ -233,46 +268,49 @@ static bool usePotion(GameState& state, CombatFlow& flow,
 ### 3.1 模块引用图
 
 ```
-                    ┌─────────────┐
-                    │  GameState  │  (纯数据容器)
-                    └──────┬──────┘
-                           │
-           ┌───────────────┼───────────────┐
-           │               │               │
-           ▼               ▼               ▼
-    ┌─────────────┐  ┌───────────┐  ┌──────────────┐
-    │  EventBus   │  │  Action    │  │  CombatFlow  │
-    │  (事件总线)  │  │  Queue     │  │  (状态机)    │
-    └──────┬──────┘  └───────────┘  └──────┬───────┘
-           │                              │
-           ▼                              ▼
-    ┌─────────────┐              ┌───────────────┐
-    │ Power/Relic  │              │ ActionSystem  │
-    │ (订阅事件)   │              │ (执行器)      │
-    └─────────────┘              └───────┬───────┘
-                                          │
-              ┌───────────────────────────┼───────────────────────────┐
-              │                           │                           │
-              ▼                           ▼                           ▼
-       ┌─────────────┐            ┌──────────────┐            ┌──────────────┐
-       │  Character  │            │ AbstractCard │            │ IntentBrain   │
-       │  (实体基类)  │            │  (卡牌基类)  │            │  (AI策略)     │
-       └──────┬──────┘            └──────┬───────┘            └───────────────┘
-              │                          │
-              ▼                          ▼
-       ┌─────────────┐            ┌──────────────┐
-       │ Player/     │            │ Card::use()  │
-       │ Monster     │            │ 添加Action   │
-       └─────────────┘            └──────────────┘
+                    ┌─────────────────────────────────────┐
+                    │            GameEngine               │
+                    │  (runState / combatState /          │
+                    │   actionManager / eventBus)         │
+                    └─────────────────────────────────────┘
+                                    │
+            ┌───────────────────────┼───────────────────────┐
+            │                       │                       │
+            ▼                       ▼                       ▼
+     ┌─────────────┐        ┌──────────────┐        ┌──────────────┐
+     │  RunState   │        │ CombatState  │        │ ActionManager│
+     │  (持久层)   │        │  (战斗层)    │        │  (执行器)    │
+     └─────────────┘        └──────────────┘        └──────┬───────┘
+            │                       │                       │
+            ▼                       ▼                       │
+     ┌─────────────┐        ┌──────────────┐               │
+     │ relics/     │        │ player/      │               │
+     │ potions/   │        │ monsters/    │               │
+     │ masterDeck │        │ 牌堆/rng     │               │
+     └─────────────┘        └──────────────┘               │
+                                    │                       │
+            ┌───────────────────────┼───────────────────────┘
+            │                       │
+            ▼                       ▼
+     ┌─────────────┐        ┌──────────────┐
+     │  EventBus   │        │  CombatFlow  │
+     │  (事件总线)  │        │  (状态机)    │
+     └──────┬──────┘        └──────────────┘
+            │
+            ▼
+     ┌─────────────┐
+     │ Power/Relic │
+     │ (订阅事件)  │
+     └─────────────┘
 ```
 
 ### 3.2 数据流向
 
 ```
 1. 玩家出牌：
-   PlayerAction → Card::use() → ActionQueue.add(Action)
+   PlayerActions → Card::use() → engine.actionManager.addAction(Action)
                                     ↓
-                            ActionSystem::executeUntilBlocked()
+                            ActionManager::executeUntilBlocked()
                                     ↓
                             AbstractAction::update() → EventBus.publish()
                                     ↓
@@ -312,8 +350,8 @@ class Character {
     std::shared_ptr<AbstractPower> getPower(const std::string& powerName) const;
 
     // Relic 管理（封装 relics 数组）
-    void addRelic(std::shared_ptr<AbstractRelic> relic, GameState& state);
-    void removeRelic(std::shared_ptr<AbstractRelic> relic, GameState& state);
+    void addRelic(std::shared_ptr<AbstractRelic> relic, GameEngine& engine);
+    void removeRelic(std::shared_ptr<AbstractRelic> relic, GameEngine& engine);
 
     // 查询表单处理
     void processQuery(VulnerableMultiplierQuery& query);
@@ -329,7 +367,7 @@ class Character {
 class AbstractAction {
 public:
     virtual ~AbstractAction() = default;
-    virtual bool update(GameState& state) = 0;  // 返回 true = 完成，false = 阻塞
+    virtual bool update(GameEngine& engine) = 0;  // 返回 true = 完成，false = 阻塞
 };
 ```
 
@@ -337,7 +375,7 @@ public:
 - Action 对象必须携带完整上下文（source、target、amount 等）
 - 操作实体前必须检查 `isDead()`
 - 使用 `std::unique_ptr` 管理生命周期
-- **委托模式约束**：若 Action 内部创建子 Action，父 Action 应在当帧完成（返回 true），子 Action 由 ActionSystem 驱动执行
+- **委托模式约束**：若 Action 内部创建子 Action，父 Action 应在当帧完成（返回 true），子 Action 由 ActionManager 驱动执行
 
 ### 4.3 AbstractCard 接口
 
@@ -353,7 +391,7 @@ public:
     int energyOnUse;    // X 费牌打出时的费用
     bool isExhaust;     // 是否消耗
 
-    virtual void use(GameState& state, std::shared_ptr<Character> target) = 0;
+    virtual void use(GameEngine& engine, std::shared_ptr<Character> target) = 0;
 };
 ```
 
@@ -373,29 +411,22 @@ public:
 
 ## 5. 核心文件分析
 
-### 5.1 GameState.h - 游戏状态管理
+### 5.1 CombatState.h - 战斗状态管理
 
-[GameState.h](file:///j:\学习\项目\STS_CPP\src\gamestate\GameState.h)
+[CombatState.h](file:///j:\学习\项目\STS_CPP\src\state\CombatState.h)
 
 **设计原则**：纯数据容器（Anemic Domain Model），禁止包含业务逻辑。
 
 **核心组成**：
-- 实体指针：`player`、`monsters`
-- 事件总线：`eventBus`
-- 随机数管理器：`rng`（4 个隔离 RNG）
+- 玩家实体：`player`
+- 怪物列表：`monsters`
+- 药水列表：`potions`
 - 牌堆系统：`drawPile`、`hand`、`discardPile`、`exhaustPile`、`limbo`
-- 动作队列：`actionQueue`（通过 `addAction/addActionToFront` 访问）
+- 随机数管理器：`combatRng`（战斗内隔离 RNG）
 - 选牌上下文：`selectionCtx`（`std::optional`）
 
-**RandomManager 隔离策略**：
-```cpp
-struct RandomManager {
-    std::mt19937 shuffleRng;     // 洗牌专用
-    std::mt19937 monsterRng;      // 怪物意图生成专用
-    std::mt19937 combatRng;       // 战斗内随机效果
-    std::mt19937 mapAndDropRng;   // 局外大盘掉落
-};
-```
+**GameState.h 说明**：
+[GameState.h](file:///j:\学习\项目\STS_CPP\src\gamestate\GameState.h) 已标记为【遗留】，被 CombatState 替代。
 
 ### 5.2 CombatFlow.cpp - 战斗流程控制
 
@@ -417,36 +448,36 @@ BATTLE_START → ROUND_START → PLAYER_TURN_START → PLAYER_ACTION
 **铁律**：
 - CombatFlow 绝对不知道具体的 Action 类
 - 只负责推动时间流逝和发布广播
-- 所有动作队列执行由 ActionSystem 统一负责
+- 所有动作队列执行由 ActionManager 统一负责
 
-### 5.3 ActionSystem.h - Action 执行系统
+### 5.3 ActionManager.h - Action 执行系统
 
-[ActionSystem.h](file:///j:\学习\项目\STS_CPP\src\system\ActionSystem.h)
+[ActionManager.h](file:///j:\学习\项目\STS_CPP\src\action\ActionManager.h)
 
 **核心驱动器**：
 ```cpp
-static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
+void executeUntilBlocked(GameEngine& engine, CombatFlow& flow) {
     int loopCount = 0;
 
-    while (state.currentPhase == StatePhase::PLAYING_CARD) {
+    while (flow.getCurrentPhase() == BattlePhase::PLAYER_ACTION) {
         if (++loopCount > 1000) {
             break;  // 防死锁看门狗
         }
 
-        if (!state.currentAction) {
-            if (state.actionQueue.empty()) {
+        if (!currentAction) {
+            if (actionQueue.empty()) {
                 break;
             }
-            state.currentAction = std::move(state.actionQueue.front());
-            state.actionQueue.pop_front();
+            currentAction = std::move(actionQueue.front());
+            actionQueue.pop_front();
         }
 
-        bool isDone = state.currentAction->update(state);
+        bool isDone = currentAction->update(engine);
 
         if (isDone) {
-            state.currentAction.reset();
-            flow.sbaGlobalCheck(state);      // SBA 全局巡视
-            flow.checkBattleEndCondition(state);
+            currentAction.reset();
+            flow.sbaGlobalCheck(engine);      // SBA 全局巡视
+            flow.checkBattleEndCondition(engine);
         } else {
             break;  // currentAction 返回 false → 阻塞等待
         }
@@ -455,7 +486,7 @@ static void executeUntilBlocked(GameState& state, CombatFlow& flow) {
 ```
 
 **currentAction 模式**：
-- `state.currentAction` 持有当前正在执行的 Action 指针
+- `currentAction` 持有当前正在执行的 Action 指针
 - 当 Action::update() 返回 true（完成）时，重置 currentAction，然后执行 SBA 全局巡视
 - 当 Action::update() 返回 false（阻塞）时，保留 currentAction，退出循环等待下一帧继续
 - 下次调用 executeUntilBlocked 时，若 currentAction 存在则直接继续执行
@@ -499,14 +530,15 @@ void addActionToFront(std::unique_ptr<AbstractAction> action) {
 | 铁律 | 描述 |
 |------|------|
 | **Action 队列中心化** | 所有状态变更必须通过 Action 队列，禁止直接修改实体属性 |
-| **GameState 纯数据** | GameState 禁止包含任何业务逻辑 |
+| **CombatState 纯数据** | CombatState 禁止包含任何业务逻辑 |
 | **CombatFlow 瞎子广播员** | 不知道具体 Action，只管状态跃迁和事件发布 |
-| **ActionSystem 执行器** | 所有业务逻辑由 ActionSystem 执行 |
-| **零全局 RNG** | 所有随机操作必须使用 `rng` 中的隔离 RNG |
+| **ActionManager 执行器** | 所有业务逻辑由 ActionManager 执行 |
+| **零全局 RNG** | 所有随机操作必须使用 `combatRng` 中的隔离 RNG |
 | **内存安全** | 禁止 raw new/delete，使用智能指针；操作实体前检查 `isDead()` |
 | **Erase-Remove 自清理** | EventBus 回调返回 false 自动移除，配合 weak_ptr 使用 |
-| **Potion 用完即弃** | 药水效果执行后立即从 GameState::potions 移除，禁止长期持有 |
+| **Potion 用完即弃** | 药水效果执行后立即从 RunState::potions 移除，禁止长期持有 |
 | **四阶段伤害管线** | Power/Relic 通过 `atDamageGive/Receive/FinalGive/FinalReceive` 修饰 |
+| **Intent target 弱引用** | Intent.target 使用 weak_ptr，操作前必须 lock() 验证有效性 |
 
 ---
 

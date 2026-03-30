@@ -6,7 +6,7 @@ FixedBrain::FixedBrain(std::vector<Intent> sequence)
 
 Intent FixedBrain::decide(CombatState& combat, Monster* owner) {
     if (intentSequence.empty()) {
-        return Intent{IntentType::DEFEND, 0, 1, 0, nullptr};
+        return Intent{IntentType::DEFEND, 0, 1, 0, {}};
     }
     Intent intent = intentSequence[currentIndex];
     recordMoveId(intent.move_id);

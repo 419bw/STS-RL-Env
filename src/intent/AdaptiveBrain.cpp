@@ -12,16 +12,16 @@ Intent AdaptiveBrain::decide(CombatState& combat, Monster* owner) {
     for (auto& eval : evaluators) {
         if (auto intentOpt = eval(combat, owner, playerPtr)) {
             recordMoveId(intentOpt->move_id);
-            if (!intentOpt->target && playerPtr) {
-                intentOpt->target = playerPtr;
+            if (!intentOpt->target.lock() && playerPtr) {
+                intentOpt->target = combat.player;
             }
             return *intentOpt;
         }
     }
 
-    Intent intent{IntentType::DEFEND, 0, 1, 0, nullptr};
+    Intent intent{IntentType::DEFEND, 0, 1, 0, {}};
     if (playerPtr) {
-        intent.target = playerPtr;
+        intent.target = combat.player;
     }
     return intent;
 }
