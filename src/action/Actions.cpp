@@ -314,7 +314,7 @@ bool RemoveSpecificPowerAction::update(GameEngine& engine) {
 // 
 // 引擎由于 Phase 改变，将自动暂停推演
 // ==========================================
-bool RequestCardSelectionAction::update(GameState& state) {
+bool RequestCardSelectionAction::update(GameEngine& engine) {
     // 1. 根据 PileType 实时获取牌堆
     std::vector<std::shared_ptr<AbstractCard>>* pile = nullptr;
     
@@ -347,7 +347,7 @@ bool RequestCardSelectionAction::update(GameState& state) {
     // 2. 切换状态，冻结引擎
     engine.combatState->currentPhase = StatePhase::WAITING_FOR_CARD_SELECTION;
 
-    / 3. 写入上下文（使用 CardSelectionContext）
+    // 3. 写入上下文（使用 CardSelectionContext）
     CardSelectionContext ctx;
     ctx.choices = *pile;
     ctx.purpose = purpose;

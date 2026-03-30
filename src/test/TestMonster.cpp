@@ -1,7 +1,7 @@
 #pragma once
 
 #include "src/test/TestFramework.h"
-#include "src/gamestate/GameState.h"
+#include "src/engine/GameEngine.h"
 #include "src/character/Character.h"
 #include "src/character/monster/JawWorm.h"
 #include "src/intent/Intent.h"
@@ -13,7 +13,6 @@
 #include "src/power/Powers.h"
 #include "src/flow/CombatFlow.h"
 #include "src/rules/BasicRules.h"
-#include "src/system/ActionSystem.h"
 #include <memory>
 #include <vector>
 
@@ -21,22 +20,24 @@ using namespace TestFramework;
 
 namespace MonsterTests {
 
-GameState createTestState() {
-    GameState state;
-    state.enableLogging = false;
-    state.monsters.push_back(std::make_shared<Monster>("Test Monster", 100));
-    BasicRules::registerRules(state);
-    return state;
+GameEngine createTestEngine() {
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<Monster>("Test Monster", 100));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
+    return engine;
 }
 
-GameState createTestStateWithPlayerHp(int hp) {
-    GameState state;
-    state.enableLogging = false;
-    state.player->current_hp = hp;
-    state.player->max_hp = hp;
-    state.monsters.push_back(std::make_shared<Monster>("Test Monster", 100));
-    BasicRules::registerRules(state);
-    return state;
+GameEngine createTestEngineWithPlayerHp(int hp) {
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<Monster>("Test Monster", 100));
+    engine.combatState->enableLogging = false;
+    engine.combatState->player->current_hp = hp;
+    engine.combatState->player->max_hp = hp;
+    BasicRules::registerRules(engine);
+    return engine;
 }
 
 void test_Monster_BasicConstruction() {
@@ -105,16 +106,16 @@ void test_Monster_BlockOverwhelm() {
 }
 
 void test_Monster_rollIntent_WithBrain() {
-    GameState state = createTestState();
-    auto monster = state.monsters[0];
+    GameEngine engine = createTestEngine();
+    auto monster = engine.combatState->monsters[0];
 
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, state.player.get(), true, 1, "Attack"}
+        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Attack"}
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
     monster->setBrain(brain);
 
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
     const Intent& intent = monster->getRealIntent();
     TEST_ASSERT_EQ(static_cast<int>(intent.type), static_cast<int>(IntentType::ATTACK), "Intent type should be ATTACK");
@@ -122,89 +123,89 @@ void test_Monster_rollIntent_WithBrain() {
 }
 
 void test_Monster_rollIntent_WithoutBrain() {
-    GameState state = createTestState();
-    auto monster = state.monsters[0];
+    GameEngine engine = createTestEngine();
+    auto monster = engine.combatState->monsters[0];
 
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
     const Intent& intent = monster->getRealIntent();
     TEST_ASSERT_EQ(static_cast<int>(intent.type), static_cast<int>(IntentType::ATTACK), "Without brain, intent stays as default ATTACK");
 }
 
 void test_Monster_takeTurn_Attack() {
-    GameState state = createTestStateWithPlayerHp(100);
+    GameEngine engine = createTestEngineWithPlayerHp(100);
     CombatFlow flow;
-    auto monster = state.monsters[0];
-    auto player = state.player.get();
+    auto monster = engine.combatState->monsters[0];
+    auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
         {IntentType::ATTACK, 10, 1, 0, player, true, 1, "Attack"}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
     int playerHpBefore = player->current_hp;
-    monster->takeTurn(state);
+    monster->takeTurn(engine);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     TEST_ASSERT_EQ(player->current_hp, playerHpBefore - 10, "Player should take 10 damage");
 }
 
 void test_Monster_takeTurn_Attack_MultipleHits() {
-    GameState state = createTestStateWithPlayerHp(100);
+    GameEngine engine = createTestEngineWithPlayerHp(100);
     CombatFlow flow;
-    auto monster = state.monsters[0];
-    auto player = state.player.get();
+    auto monster = engine.combatState->monsters[0];
+    auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
         {IntentType::ATTACK, 10, 3, 0, player, true, 1, "Triple Hit"}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
     int playerHpBefore = player->current_hp;
-    monster->takeTurn(state);
+    monster->takeTurn(engine);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     TEST_ASSERT_EQ(player->current_hp, playerHpBefore - 30, "Player should take 30 damage from 3 hits");
 }
 
 void test_Monster_takeTurn_Defend() {
-    GameState state = createTestState();
+    GameEngine engine = createTestEngine();
     CombatFlow flow;
-    auto monster = state.monsters[0];
+    auto monster = engine.combatState->monsters[0];
 
     std::vector<Intent> sequence = {
         {IntentType::DEFEND, 0, 1, 15, nullptr, true, 1, "Defend"}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
-    monster->takeTurn(state);
+    monster->takeTurn(engine);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     TEST_ASSERT_EQ(monster->block, 15, "Monster should gain 15 block");
 }
 
 void test_Monster_takeTurn_AttackDefend() {
-    GameState state = createTestStateWithPlayerHp(100);
+    GameEngine engine = createTestEngineWithPlayerHp(100);
     CombatFlow flow;
-    auto monster = state.monsters[0];
-    auto player = state.player.get();
+    auto monster = engine.combatState->monsters[0];
+    auto player = engine.combatState->player.get();
 
     std::vector<Intent> sequence = {
         {IntentType::ATTACK_DEFEND, 10, 1, 8, player, true, 1, "Strike and Guard"}
     };
     monster->setBrain(std::make_shared<FixedBrain>(sequence));
-    monster->rollIntent(state);
+    monster->rollIntent(engine);
 
     int playerHpBefore = player->current_hp;
-    monster->takeTurn(state);
+    monster->takeTurn(engine);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     TEST_ASSERT_EQ(player->current_hp, playerHpBefore - 10, "Player should take 10 damage");
     TEST_ASSERT_EQ(monster->block, 8, "Monster should gain 8 block");
@@ -233,14 +234,14 @@ void test_JawWorm_AscensionScaling_High() {
 }
 
 void test_JawWorm_FirstMove_AlwaysChomp() {
-    GameState state;
-    state.enableLogging = false;
-    JawWorm worm(0);
-    auto wormPtr = std::make_shared<JawWorm>(worm);
-    state.monsters.push_back(wormPtr);
-    BasicRules::registerRules(state);
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<JawWorm>(0));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
 
-    wormPtr->rollIntent(state);
+    auto wormPtr = std::dynamic_pointer_cast<JawWorm>(engine.combatState->monsters[0]);
+    wormPtr->rollIntent(engine);
     Intent intent = wormPtr->getRealIntent();
 
     TEST_ASSERT_EQ(static_cast<int>(intent.type), static_cast<int>(IntentType::ATTACK), "First move should be ATTACK (Chomp)");
@@ -249,74 +250,76 @@ void test_JawWorm_FirstMove_AlwaysChomp() {
 }
 
 void test_JawWorm_Thrash_AttackAndBlock() {
-    GameState state = createTestStateWithPlayerHp(100);
+    GameEngine engine = createTestEngineWithPlayerHp(100);
     CombatFlow flow;
-    JawWorm worm(0);
-    auto wormPtr = std::make_shared<JawWorm>(worm);
-    state.monsters.push_back(wormPtr);
-    BasicRules::registerRules(state);
+    
+    auto wormPtr = std::make_shared<JawWorm>(0);
+    engine.combatState->monsters[0] = wormPtr;
+    BasicRules::registerRules(engine);
 
-    auto player = state.player.get();
+    auto player = engine.combatState->player.get();
     std::vector<Intent> thrashIntent = {
         {IntentType::ATTACK_DEFEND, 7, 1, 5, player, true, JawWormBrain::THRASH, "Thrash"}
     };
     auto thrashBrain = std::make_shared<FixedBrain>(thrashIntent);
     wormPtr->setBrain(thrashBrain);
-    wormPtr->rollIntent(state);
+    wormPtr->rollIntent(engine);
 
     int playerHpBefore = player->current_hp;
-    wormPtr->takeTurn(state);
+    wormPtr->takeTurn(engine);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     TEST_ASSERT_EQ(player->current_hp, playerHpBefore - 7, "Thrash should deal 7 damage");
     TEST_ASSERT_EQ(wormPtr->block, 5, "Thrash should grant 5 block");
 }
 
 void test_IntentBrain_MoveHistory_LastMove() {
-    GameState state;
-    state.enableLogging = false;
-    JawWorm worm(0);
-    state.monsters.push_back(std::make_shared<JawWorm>(worm));
-    BasicRules::registerRules(state);
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<JawWorm>(0));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
 
+    JawWorm worm(0);
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, state.player.get(), true, 1, "Move1"},
+        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Move1"},
         {IntentType::DEFEND, 0, 1, 5, nullptr, true, 2, "Move2"},
-        {IntentType::ATTACK, 10, 1, 0, state.player.get(), true, 3, "Move3"}
+        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 3, "Move3"}
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
 
-    brain->decide(state, &worm);
+    brain->decide(*engine.combatState, &worm);
     TEST_ASSERT_EQ(brain->lastMove(1), true, "Should remember last move was 1");
     TEST_ASSERT_EQ(brain->lastMove(2), false, "Last move should not be 2");
 
-    brain->decide(state, &worm);
+    brain->decide(*engine.combatState, &worm);
     TEST_ASSERT_EQ(brain->lastMove(2), true, "Should remember last move was 2");
 
-    brain->decide(state, &worm);
+    brain->decide(*engine.combatState, &worm);
     TEST_ASSERT_EQ(brain->lastMove(3), true, "Should remember last move was 3");
 }
 
 void test_IntentBrain_MoveHistory_LastTwoMoves() {
-    GameState state;
-    state.enableLogging = false;
-    JawWorm worm(0);
-    state.monsters.push_back(std::make_shared<JawWorm>(worm));
-    BasicRules::registerRules(state);
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<JawWorm>(0));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
 
+    JawWorm worm(0);
     std::vector<Intent> sequence = {
-        {IntentType::ATTACK, 10, 1, 0, state.player.get(), true, 1, "Move1"},
+        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 1, "Move1"},
         {IntentType::DEFEND, 0, 1, 5, nullptr, true, 2, "Move2"},
-        {IntentType::ATTACK, 10, 1, 0, state.player.get(), true, 3, "Move3"}
+        {IntentType::ATTACK, 10, 1, 0, engine.combatState->player.get(), true, 3, "Move3"}
     };
     auto brain = std::make_shared<FixedBrain>(sequence);
 
-    brain->decide(state, &worm);
-    brain->decide(state, &worm);
+    brain->decide(*engine.combatState, &worm);
+    brain->decide(*engine.combatState, &worm);
     TEST_ASSERT_EQ(brain->lastTwoMoves(2), false, "Should not have two moves yet");
 
-    brain->decide(state, &worm);
+    brain->decide(*engine.combatState, &worm);
     TEST_ASSERT_EQ(brain->lastTwoMoves(3), false, "Last two are [2,3], not both 3");
     TEST_ASSERT_EQ(brain->lastTwoMoves(2), false, "Last two are [2,3], not both 2");
     TEST_ASSERT_EQ(brain->lastTwoMoves(1), false, "Last two are [2,3], not both 1");

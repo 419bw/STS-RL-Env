@@ -1,10 +1,9 @@
 #include "src/test/TestFramework.h"
-#include "src/gamestate/GameState.h"
+#include "src/engine/GameEngine.h"
 #include "src/flow/CombatFlow.h"
 #include "src/action/Actions.h"
 #include "src/action/LambdaAction.h"
 #include "src/rules/BasicRules.h"
-#include "src/system/ActionSystem.h"
 #include "src/core/Types.h"
 #include <map>
 
@@ -12,47 +11,46 @@ using namespace TestFramework;
 
 namespace RandomDamageActionTests {
 
-// ==========================================
-// 辅助函数
-// ==========================================
-
-GameState createTestState() {
-    GameState state;
-    state.enableLogging = false;
-    state.monsters.push_back(std::make_shared<Monster>("Monster A", 100));
-    state.monsters.push_back(std::make_shared<Monster>("Monster B", 100));
-    BasicRules::registerRules(state);
-    return state;
+GameEngine createTestEngine() {
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<Monster>("Monster A", 100));
+    engine.combatState->monsters.push_back(std::make_shared<Monster>("Monster B", 100));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
+    return engine;
 }
 
-GameState createEmptyState() {
-    GameState state;
-    state.enableLogging = false;
-    BasicRules::registerRules(state);
-    return state;
+GameEngine createEmptyEngine() {
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<Monster>("Dummy", 1));
+    engine.combatState->monsters.clear();
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
+    return engine;
 }
-
-// ==========================================
-// T1: 单目标 - 随机选择并造成伤害
-// ==========================================
 
 void test_SingleTarget_SelectsAndDamages() {
     std::cout << "[DEBUG T1] 开始测试\n";
-    GameState state = createEmptyState();
-    state.monsters.push_back(std::make_shared<Monster>("Lone Monster", 100));
+    GameEngine engine;
+    engine.startNewRun(1337);
+    engine.startCombat(std::make_shared<Monster>("Lone Monster", 100));
+    engine.combatState->enableLogging = false;
+    BasicRules::registerRules(engine);
 
-    auto monster = state.monsters[0];
+    auto monster = engine.combatState->monsters[0];
     int initialHp = monster->current_hp;
     std::cout << "[DEBUG T1] 初始HP: " << initialHp << "\n";
 
-    state.addAction(std::make_unique<RandomDamageAction>(
-        state.player, 10, DamageType::ATTACK));
+    engine.actionManager.addAction(std::make_unique<RandomDamageAction>(
+        engine.combatState->player, 10, DamageType::ATTACK));
     std::cout << "[DEBUG T1] Action已加入队列\n";
 
-    state.currentPhase = StatePhase::PLAYING_CARD;
+    engine.combatState->currentPhase = StatePhase::PLAYING_CARD;
     std::cout << "[DEBUG T1] 调用executeUntilBlocked...\n";
     CombatFlow flow;
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
     std::cout << "[DEBUG T1] executeUntilBlocked返回\n";
 
     std::cout << "[DEBUG T1] 最终HP: " << monster->current_hp << "\n";
@@ -60,29 +58,30 @@ void test_SingleTarget_SelectsAndDamages() {
         "Single target should take 10 damage");
 }
 
-// ==========================================
-// T2: 多目标随机选择
-// ==========================================
-
 void test_MultipleTargets_RandomSelection() {
     std::cout << "[DEBUG T2] 开始测试\n";
-    GameState state = createTestState();
+    GameEngine engine = createTestEngine();
 
     std::map<std::string, int> hitCount;
     const int iterations = 10;
 
     for (int i = 0; i < iterations; ++i) {
         std::cout << "[DEBUG T2] 迭代 " << i << " 开始\n";
-        GameState localState = createTestState();
-        localState.rng.combatRng.seed(1337 + i);
-        localState.addAction(std::make_unique<RandomDamageAction>(
-            localState.player, 10, DamageType::ATTACK));
+        GameEngine localEngine;
+        localEngine.startNewRun(1337 + i);
+        localEngine.startCombat(std::make_shared<Monster>("Monster A", 100));
+        localEngine.combatState->monsters.push_back(std::make_shared<Monster>("Monster B", 100));
+        localEngine.combatState->enableLogging = false;
+        BasicRules::registerRules(localEngine);
+        
+        localEngine.actionManager.addAction(std::make_unique<RandomDamageAction>(
+            localEngine.combatState->player, 10, DamageType::ATTACK));
 
-        localState.currentPhase = StatePhase::PLAYING_CARD;
+        localEngine.combatState->currentPhase = StatePhase::PLAYING_CARD;
         CombatFlow flow;
-        ActionSystem::executeUntilBlocked(localState, flow);
+        localEngine.actionManager.executeUntilBlocked(localEngine, flow);
 
-        for (auto& m : localState.monsters) {
+        for (auto& m : localEngine.combatState->monsters) {
             if (m->current_hp < 100) {
                 hitCount[m->name]++;
                 std::cout << "[DEBUG T2] 迭代 " << i << " 命中: " << m->name << "\n";
@@ -105,22 +104,18 @@ void test_MultipleTargets_RandomSelection() {
     TEST_ASSERT(aInRange && bInRange, "Distribution should be approximately uniform");
 }
 
-// ==========================================
-// T3: 空目标列表场景
-// ==========================================
-
 void test_EmptyTargetList_NoCrash() {
-    GameState state = createEmptyState();
+    GameEngine engine = createEmptyEngine();
 
-    state.addAction(std::make_unique<RandomDamageAction>(
-        state.player, 10, DamageType::ATTACK));
+    engine.actionManager.addAction(std::make_unique<RandomDamageAction>(
+        engine.combatState->player, 10, DamageType::ATTACK));
 
-    state.currentPhase = StatePhase::PLAYING_CARD;
+    engine.combatState->currentPhase = StatePhase::PLAYING_CARD;
     CombatFlow flow;
 
     bool noCrash = true;
     try {
-        ActionSystem::executeUntilBlocked(state, flow);
+        engine.actionManager.executeUntilBlocked(engine, flow);
     } catch (...) {
         noCrash = false;
     }
@@ -128,24 +123,20 @@ void test_EmptyTargetList_NoCrash() {
     TEST_ASSERT(noCrash, "Empty target list should not cause crash");
 }
 
-// ==========================================
-// T4: 所有目标死亡场景
-// ==========================================
-
 void test_AllMonstersDead_NoCrash() {
-    GameState state = createEmptyState();
-    state.monsters.push_back(std::make_shared<Monster>("Dead Monster", 100));
-    state.monsters[0]->current_hp = 0;
+    GameEngine engine = createEmptyEngine();
+    engine.combatState->monsters.push_back(std::make_shared<Monster>("Dead Monster", 100));
+    engine.combatState->monsters[0]->current_hp = 0;
 
-    state.addAction(std::make_unique<RandomDamageAction>(
-        state.player, 10, DamageType::ATTACK));
+    engine.actionManager.addAction(std::make_unique<RandomDamageAction>(
+        engine.combatState->player, 10, DamageType::ATTACK));
 
-    state.currentPhase = StatePhase::PLAYING_CARD;
+    engine.combatState->currentPhase = StatePhase::PLAYING_CARD;
     CombatFlow flow;
 
     bool noCrash = true;
     try {
-        ActionSystem::executeUntilBlocked(state, flow);
+        engine.actionManager.executeUntilBlocked(engine, flow);
     } catch (...) {
         noCrash = false;
     }
@@ -153,25 +144,21 @@ void test_AllMonstersDead_NoCrash() {
     TEST_ASSERT(noCrash, "All monsters dead should not cause crash");
 }
 
-// ==========================================
-// T5: source死亡场景
-// ==========================================
-
 void test_SourceDead_NoCrash() {
-    GameState state = createTestState();
+    GameEngine engine = createTestEngine();
 
     auto deadPlayer = std::make_shared<Monster>("Dead Player", 100);
     deadPlayer->current_hp = 0;
 
-    state.addAction(std::make_unique<RandomDamageAction>(
+    engine.actionManager.addAction(std::make_unique<RandomDamageAction>(
         deadPlayer, 10, DamageType::ATTACK));
 
-    state.currentPhase = StatePhase::PLAYING_CARD;
+    engine.combatState->currentPhase = StatePhase::PLAYING_CARD;
     CombatFlow flow;
 
     bool noCrash = true;
     try {
-        ActionSystem::executeUntilBlocked(state, flow);
+        engine.actionManager.executeUntilBlocked(engine, flow);
     } catch (...) {
         noCrash = false;
     }
@@ -179,40 +166,32 @@ void test_SourceDead_NoCrash() {
     TEST_ASSERT(noCrash, "Dead source should not cause crash");
 }
 
-// ==========================================
-// T7: LambdaAction 集成测试
-// ==========================================
-
 void test_IntegrationWithLambdaAction() {
     std::cout << "[DEBUG T7] 开始测试\n";
-    GameState state = createTestState();
+    GameEngine engine = createTestEngine();
     auto sharedFlag = std::make_shared<bool>(false);
 
     std::cout << "[DEBUG T7] 添加LambdaAction\n";
-    state.addAction(LambdaAction::make(
-        std::weak_ptr<Character>(state.player),
-        [sharedFlag](GameState& s, Character* src) {
+    engine.actionManager.addAction(LambdaAction::make(
+        std::weak_ptr<Character>(engine.combatState->player),
+        [sharedFlag](GameEngine& eng, Character* src) {
             *sharedFlag = true;
         }
     ));
 
     std::cout << "[DEBUG T7] 添加RandomDamageAction\n";
-    state.addAction(std::make_unique<RandomDamageAction>(
-        state.player, 10, DamageType::ATTACK));
+    engine.actionManager.addAction(std::make_unique<RandomDamageAction>(
+        engine.combatState->player, 10, DamageType::ATTACK));
 
-    state.currentPhase = StatePhase::PLAYING_CARD;
+    engine.combatState->currentPhase = StatePhase::PLAYING_CARD;
     std::cout << "[DEBUG T7] 调用executeUntilBlocked...\n";
     CombatFlow flow;
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
     std::cout << "[DEBUG T7] executeUntilBlocked返回\n";
 
     std::cout << "[DEBUG T7] sharedFlag值: " << (*sharedFlag ? "true" : "false") << "\n";
     TEST_ASSERT(*sharedFlag, "Lambda action should execute");
 }
-
-// ==========================================
-// 运行所有测试
-// ==========================================
 
 void runAllTests() {
     TestSuite suite("RandomDamageAction 测试");
@@ -234,4 +213,4 @@ void runAllTests() {
     suite.printReport();
 }
 
-} // namespace RandomDamageActionTests
+}
