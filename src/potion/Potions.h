@@ -11,5 +11,5 @@ class StrengthPotion : public AbstractPotion {
 public:
     StrengthPotion();
 
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };

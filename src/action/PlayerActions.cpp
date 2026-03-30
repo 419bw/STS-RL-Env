@@ -4,7 +4,6 @@
 #include "src/action/Actions.h"
 #include "src/card/AbstractCard.h"
 #include "src/potion/AbstractPotion.h"
-#include "src/system/ActionSystem.h"
 #include "src/utils/Logger.h"
 #include <algorithm>
 #include <iostream>
@@ -12,18 +11,21 @@
 
 // ==========================================
 // 玩家动作实现
-// 
+//
 // 状态机拦截：
 // - playCard: 只在 PLAYING_CARD 阶段可用
 // - chooseCard/chooseCards: 只在 WAITING_FOR_CARD_SELECTION 阶段可用
-// 
-// 铁律：所有动作执行后调用 ActionSystem::executeUntilBlocked
+//
+// 铁律：所有动作执行后调用 ActionManager::executeUntilBlocked
 // ==========================================
 
-bool PlayerActions::playCard(GameState& state, 
-                              CombatFlow& flow,
+bool PlayerActions::playCard(GameEngine& engine, CombatFlow& flow,
                               std::shared_ptr<AbstractCard> card,
                               std::shared_ptr<Character> target) {
+    if (!engine.combatState) return false;
+
+    auto& state = *engine.combatState;
+
     // ★ 真正的安全锁：系统是不是在自由出牌状态？
     if (state.currentPhase != StatePhase::PLAYING_CARD) {
         STS_LOG(state, "[警告] 系统正在等待你做出选择，无法打出新牌！\n");
@@ -61,7 +63,7 @@ bool PlayerActions::playCard(GameState& state,
     // 步骤 3：效果排队
     // 调用 card->use(state, target)，将卡牌自身产生的业务动作推入队列
     // ==========================================
-    state.eventBus.publish(EventType::ON_CARD_PLAYING, state, card.get());
+    engine.eventBus.publish(EventType::ON_CARD_PLAYING, engine, card.get());
 
     // CardTarget 校验路由
     switch (card->targetType) {
@@ -94,41 +96,45 @@ bool PlayerActions::playCard(GameState& state,
             return false;
     }
 
-    card->use(state, target);
-    state.eventBus.publish(EventType::ON_CARD_PLAYED, state, card.get());
+    card->use(engine, target);
+    engine.eventBus.publish(EventType::ON_CARD_PLAYED, engine, card.get());
 
     // ==========================================
     // 步骤 4：善后排队
     // 在队列尾部追加善后动作：UseCardAction
     // 负责将卡牌从 limbo 移入最终归宿
     // ==========================================
-    state.addAction(std::make_unique<UseCardAction>(card));
+    engine.actionManager.addAction(std::make_unique<UseCardAction>(card));
 
     // ==========================================
     // 步骤 5：通电执行
-    // 调用 ActionSystem::executeUntilBlocked，瞬间清算所有队列
+    // 调用 ActionManager::executeUntilBlocked，瞬间清算所有队列
     // ==========================================
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     return true;
 }
 
 // ==========================================
 // chooseCard 实现（兼容接口）
-// 
+//
 // 单张选牌，内部调用 chooseCards
 // ==========================================
-void PlayerActions::chooseCard(GameState& state, CombatFlow& flow, int choiceIndex) {
-    chooseCards(state, flow, {choiceIndex});
+void PlayerActions::chooseCard(GameEngine& engine, CombatFlow& flow, int choiceIndex) {
+    chooseCards(engine, flow, {choiceIndex});
 }
 
 // ==========================================
 // chooseCards 实现（批量接口）
-// 
+//
 // 智能路由：根据 Purpose，批量推入物理结算 Action
 // 倒序推入队列，保证原本的先后顺序
 // ==========================================
-void PlayerActions::chooseCards(GameState& state, CombatFlow& flow, const std::vector<int>& choiceIndices) {
+void PlayerActions::chooseCards(GameEngine& engine, CombatFlow& flow, const std::vector<int>& choiceIndices) {
+    if (!engine.combatState) return;
+
+    auto& state = *engine.combatState;
+
     if (state.currentPhase != StatePhase::WAITING_FOR_CARD_SELECTION) {
         return;  // 防御性编程：没让你选牌你别瞎选
     }
@@ -144,7 +150,7 @@ void PlayerActions::chooseCards(GameState& state, CombatFlow& flow, const std::v
     // 安全校验：AI 传来的数量合不合法？
     int chosenCount = static_cast<int>(choiceIndices.size());
     if (chosenCount < ctx.minSelection || chosenCount > ctx.maxSelection) {
-        STS_LOG(state, "[警告] 选择的数量不合法！要求: " << ctx.minSelection 
+        STS_LOG(state, "[警告] 选择的数量不合法！要求: " << ctx.minSelection
                   << "-" << ctx.maxSelection << "，实际: " << chosenCount << "\n");
         return;
     }
@@ -161,16 +167,16 @@ void PlayerActions::chooseCards(GameState& state, CombatFlow& flow, const std::v
     // 为什么要倒序推入？因为 push_front 是插在队头，倒序插才能保证原本的先后顺序！
     for (auto it = choiceIndices.rbegin(); it != choiceIndices.rend(); ++it) {
         auto selectedCard = ctx.choices[*it];
-        
+
         switch (ctx.purpose) {
             case SelectionPurpose::EXHAUST_FROM_HAND:
-                state.addActionToFront(std::make_unique<SpecificCardExhaustAction>(selectedCard));
+                engine.actionManager.addActionToFront(std::make_unique<SpecificCardExhaustAction>(selectedCard));
                 break;
             case SelectionPurpose::MOVE_TO_HAND:
-                state.addActionToFront(std::make_unique<MoveCardToHandAction>(selectedCard));
+                engine.actionManager.addActionToFront(std::make_unique<MoveCardToHandAction>(selectedCard));
                 break;
             case SelectionPurpose::DISCARD_FROM_HAND:
-                state.addActionToFront(std::make_unique<SpecificCardDiscardAction>(selectedCard));
+                engine.actionManager.addActionToFront(std::make_unique<SpecificCardDiscardAction>(selectedCard));
                 break;
         }
     }
@@ -188,21 +194,29 @@ void PlayerActions::chooseCards(GameState& state, CombatFlow& flow, const std::v
     state.currentPhase = StatePhase::PLAYING_CARD;
 
     // 唤醒引擎，继续光速推演！
-    ActionSystem::executeUntilBlocked(state, flow);
+    engine.actionManager.executeUntilBlocked(engine, flow);
 }
 
-void PlayerActions::endTurn(GameState& state, CombatFlow& flow) {
-    if (flow.currentState == CombatState::PLAYER_ACTION && 
+void PlayerActions::endTurn(GameEngine& engine, CombatFlow& flow) {
+    if (!engine.combatState) return;
+
+    auto& state = *engine.combatState;
+
+    if (flow.getCurrentPhase() == BattlePhase::PLAYER_ACTION &&
         state.currentPhase == StatePhase::PLAYING_CARD &&
-        state.isActionQueueEmpty()) {
+        engine.actionManager.isQueueEmpty()) {
         STS_LOG(state, "[外部输入] -> 玩家点击了【结束回合】\n");
-        flow.currentState = CombatState::PLAYER_TURN_END;
+        flow.setPhase(BattlePhase::PLAYER_TURN_END);
     } else {
         STS_LOG(state, "[警告] 当前状态不允许结束回合，或动作尚未结算完毕！\n");
     }
 }
 
-bool PlayerActions::usePotion(GameState& state, CombatFlow& flow, std::shared_ptr<AbstractPotion> potion, std::shared_ptr<Character> target) {
+bool PlayerActions::usePotion(GameEngine& engine, CombatFlow& flow, std::shared_ptr<AbstractPotion> potion, std::shared_ptr<Character> target) {
+    if (!engine.combatState) return false;
+
+    auto& state = *engine.combatState;
+
     if (state.currentPhase != StatePhase::PLAYING_CARD) {
         STS_LOG(state, "[警告] 系统正在等待你做出选择，无法使用药水！\n");
         return false;
@@ -213,8 +227,9 @@ bool PlayerActions::usePotion(GameState& state, CombatFlow& flow, std::shared_pt
         return false;
     }
 
-    auto it = std::find(state.potions.begin(), state.potions.end(), potion);
-    if (it == state.potions.end()) {
+    // 药水消耗：直接全局删除
+    auto it = std::find(engine.runState->potions.begin(), engine.runState->potions.end(), potion);
+    if (it == engine.runState->potions.end()) {
         STS_LOG(state, "[警告] 未找到该药水！\n");
         return false;
     }
@@ -246,12 +261,14 @@ bool PlayerActions::usePotion(GameState& state, CombatFlow& flow, std::shared_pt
 
     STS_LOG(state, "[玩家动作] 使用药水: " << potion->id << "\n");
 
-    state.eventBus.publish(EventType::ON_POTION_USED, state, potion.get());
+    engine.eventBus.publish(EventType::ON_POTION_USED, engine, potion.get());
 
-    potion->use(state, target);
-    state.potions.erase(it);
+    potion->use(engine, target);
 
-    ActionSystem::executeUntilBlocked(state, flow);
+    // 全局删除药水
+    engine.runState->potions.erase(it);
+
+    engine.actionManager.executeUntilBlocked(engine, flow);
 
     return true;
 }

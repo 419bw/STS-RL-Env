@@ -8,62 +8,84 @@
 #include <vector>
 
 // ==========================================
-// 占位动作 (Dummy Action) - 用于状态机流程
+// 占位动作 (DummyAction) - 用于状态机流程
+//
+// 纯状态机推进，不携带任何业务逻辑
+// 用途：作为 Placeholder，空占一个队列位置
 // ==========================================
 class DummyAction : public AbstractAction {
     std::string name;
 public:
     DummyAction(std::string n) : name(n) {}
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 怪物意图刷新动作 (Roll All Monster Intents Action)
-// 所有操作都通过 Action 队列执行，符合铁律
+// 刷新所有怪物意图 (RollAllMonsterIntentsAction)
+//
+// 物理行为：遍历所有怪物，调用其 Brain 生成意图
+// 异常安全：如果怪物已死亡，跳过
+// 触发时机：回合开始（MONSTER_TURN_START）
 // ==========================================
 class RollAllMonsterIntentsAction : public AbstractAction {
 public:
     RollAllMonsterIntentsAction() = default;
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 怪物回合执行动作 (Monster Take Turn Action)
-// 将怪物回合执行封装为 Action，确保时序正确（荆棘反伤等）
+// 怪物执行回合 (MonsterTakeTurnAction)
+//
+// 核心职责：驱动怪物执行回合
+// 1. 获取真实 Intent（通过 Brain）
+// 2. 根据 Intent 类型生成对应 Action 队列
+// 3. 若怪物死亡，跳过
+// 4. 触发 ON_TURN_END（供中毒结算用）
 // ==========================================
 class MonsterTakeTurnAction : public AbstractAction {
     std::shared_ptr<Monster> monster;
 public:
     MonsterTakeTurnAction(std::shared_ptr<Monster> m) : monster(m) {}
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：伤害动作 (Damage Action)
-// 
+// 伤害动作 (DamageAction)
+//
 // 数据驱动原则：
 // - 必须携带溯源信息（source: 伤害来源）
 // - Action 负责将 source 传递给计算层
-// - 会受到护甲、状态效果等影响
+// - Character::calculateFinalDamage 纯计算（可用于预测）
+// - Character::takeDamage 执行扣血
+// - DamageAction 负责日志输出和事件发布
+//
+// 事件发布：
+// - ON_ATTACKED：被攻击时（不论有没有格挡，唤醒荆棘）
+// - ON_UNBLOCKED_DAMAGE_TAKEN：格挡击穿时（唤醒静电释放）
+// - ON_HP_LOST：真实掉血时（唤醒红骷髅）
 // ==========================================
 class DamageAction : public AbstractAction {
-    std::shared_ptr<Character> source;  // 伤害来源（攻击者）
-    std::shared_ptr<Character> target;  // 伤害目标
+    std::shared_ptr<Character> source;
+    std::shared_ptr<Character> target;
     int amount;
-    DamageType damageType;              // 伤害类型
+    DamageType damageType;
 public:
     DamageAction(std::shared_ptr<Character> src, std::shared_ptr<Character> tgt, int a,
                  DamageType type = DamageType::ATTACK);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：随机目标伤害动作 (Random Damage Action)
+// 随机伤害动作 (RandomDamageAction)
 //
 // 特性：
-// - 随机选择一个存活怪物作为目标
-// - 将伤害委托给 DamageAction 执行
-// - 用于"乱叉"等随机攻击效果
+// - 随机选择存活的怪物作为目标
+// - 将实际伤害委托给 DamageAction
+// - 若没有存活目标则直接结束
+//
+// 使用场景：
+// - 【飞镖】：3 次随机 3 点伤害
+// - 【多重打击】：2 次随机 4 点伤害
 // ==========================================
 class RandomDamageAction : public AbstractAction {
     std::shared_ptr<Character> source;
@@ -72,52 +94,79 @@ class RandomDamageAction : public AbstractAction {
 public:
     RandomDamageAction(std::shared_ptr<Character> src, int dmg,
                        DamageType type = DamageType::ATTACK);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：直接扣血动作 (Lose HP Action)
-// 
+// 失去生命值动作 (LoseHpAction)
+//
 // 特性：
 // - 无视护甲，直接扣除生命值
-// - 不触发伤害相关事件
+// - 通过计算管线（状态 + 遗物拦截）
+// - 发布 ON_HP_LOST 事件
 // - 用于中毒、献祭等效果
+//
+// 与 DamageAction 的区别：
+// - LoseHpAction 不触发格挡计算
+// - LoseHpAction 不触发 ON_ATTACKED
+// - LoseHpAction 不触发 ON_UNBLOCKED_DAMAGE_TAKEN
 // ==========================================
 class LoseHpAction : public AbstractAction {
     std::shared_ptr<Character> target;
     int amount;
 public:
     LoseHpAction(std::shared_ptr<Character> t, int a);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：获得格挡动作 (Gain Block Action)
+// 获得格挡动作 (GainBlockAction)
+//
+// 设计原则：Action 负责日志和事件
+// - Character::calculateFinalBlock 纯计算（可用于预测）
+// - Character::addBlockFinal 执行获得格挡
+// - GainBlockAction 负责日志输出和事件发布
 // ==========================================
 class GainBlockAction : public AbstractAction {
     std::shared_ptr<Character> target;
     int amount;
 public:
     GainBlockAction(std::shared_ptr<Character> t, int a);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：施加状态效果 (Apply Power Action)
+// 施加状态动作 (ApplyPowerAction)
+//
+// 保护罩逻辑：
+// 1. 查阅黑板发现 !state.isPlayerTurn (玩家回合已结束)
+// 2. 且释放者是怪物 (source != player)
+// 3. 如果满足，设置 justApplied = true，防止本轮次掉层
+//
+// 事件发布：
+// - Power::onApply() 由具体 Power 类实现
+// - onApply 可发布更细粒度的事件
 // ==========================================
 class ApplyPowerAction : public AbstractAction {
     std::shared_ptr<Character> source;
     std::shared_ptr<Character> target;
     std::shared_ptr<AbstractPower> power;
 public:
-    ApplyPowerAction(std::shared_ptr<Character> src, 
-                      std::shared_ptr<Character> tgt, 
+    ApplyPowerAction(std::shared_ptr<Character> src,
+                      std::shared_ptr<Character> tgt,
                       std::shared_ptr<AbstractPower> p);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：减少状态效果层数 (Reduce Power Action)
+// 减少状态层数动作 (ReducePowerAction)
+//
+// 只负责减少层数，不负责移除
+// 如果层数归零，推入 RemoveSpecificPowerAction 来清理
+//
+// 设计注意：
+// - 每减少 1 层推一次 Action，而非一次性减完
+// - 这样可以正确触发"每减少 1 层触发一次"的效果
 // ==========================================
 class ReducePowerAction : public AbstractAction {
     std::shared_ptr<Character> target;
@@ -125,41 +174,39 @@ class ReducePowerAction : public AbstractAction {
     int reduceAmount;
 public:
     ReducePowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p, int a);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：强制移除状态效果 (Remove Specific Power Action)
-// 
+// 移除特定状态动作 (RemoveSpecificPowerAction)
+//
 // 无视层数，直接从目标身上移除指定的 Power
-// 用于状态层数归零时的清理
+// 触发 onRemove 遗言，用于清理事件订阅等
+//
+// 与 ReducePowerAction 的区别：
+// - ReducePowerAction 是"减少"
+// - RemoveSpecificPowerAction 是"强制移除"（无视层数）
 // ==========================================
 class RemoveSpecificPowerAction : public AbstractAction {
     std::shared_ptr<Character> target;
     std::shared_ptr<AbstractPower> power;
 public:
     RemoveSpecificPowerAction(std::shared_ptr<Character> t, std::shared_ptr<AbstractPower> p);
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：请求选牌 (Request Card Selection Action)
-// 
+// 请求选牌动作 (RequestCardSelectionAction)
+//
 // 核心职责：
-// 1. 切换状态，冻结引擎
-// 2. 写入选牌上下文
-// 3. 返回 true，将自己踢出队列
-// 
-// 引擎由于 Phase 改变，将自动暂停推演
-// 
-// 支持区间选择：
-// - "必须选1张" -> minSelection=1, maxSelection=1
-// - "最多选2张" -> minSelection=0, maxSelection=2
-// 
-// 时序问题解决方案：
-// - 使用 PileType 替代 sourcePile
-// - 创建时只记录牌堆类型
-// - 执行时实时获取最新牌堆状态
+// 1. 根据 PileType 实时获取牌堆（解决时序问题）
+// 2. 切换状态，冻结引擎
+// 3. 写入选牌上下文
+// 4. 返回 true，将自己踢出队列
+//
+// 设计注意：
+// - 创建时只记录 PileType，执行时实时获取最新牌堆
+// - 这样可以避免"创建时牌堆快照"导致的时序问题
 // ==========================================
 class RequestCardSelectionAction : public AbstractAction {
     PileType sourcePileType;
@@ -175,14 +222,14 @@ public:
         int maxAmt = 1
     ) : sourcePileType(pileType), purpose(p), minSelection(minAmt), maxSelection(maxAmt) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：消耗指定卡牌 (Specific Card Exhaust Action)
-// 
-// 极其原子的物理结算动作
-// 由 chooseCard 根据 Purpose 路由创建
+// 指定卡牌消耗动作 (SpecificCardExhaustAction)
+//
+// 委托给 DeckSystem
+// 注意：不发布 ON_CARD_DISCARDED，只发布 ON_CARD_EXHAUSTED
 // ==========================================
 class SpecificCardExhaustAction : public AbstractAction {
     std::shared_ptr<AbstractCard> targetCard;
@@ -191,11 +238,15 @@ public:
     SpecificCardExhaustAction(std::shared_ptr<AbstractCard> card)
         : targetCard(card) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：将卡牌移入手牌 (Move Card To Hand Action)
+// 移动卡牌到手牌动作 (MoveCardToHandAction)
+//
+// 委托给 DeckSystem
+// 爆牌判定：手牌 >= 10 时进入弃牌堆
+// 注意：爆牌时发布 ON_CARD_DISCARDED，而非 ON_CARD_DRAWN
 // ==========================================
 class MoveCardToHandAction : public AbstractAction {
     std::shared_ptr<AbstractCard> targetCard;
@@ -204,24 +255,27 @@ public:
     MoveCardToHandAction(std::shared_ptr<AbstractCard> card)
         : targetCard(card) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
-
 // ==========================================
-// 具体动作：重置所有怪物大脑 (Reset All Brains Action)
-// 
-// 用于战斗开始时重置所有怪物的 IntentBrain 状态
-// 确保每场战斗怪物行为独立
+// 重置所有大脑动作 (ResetAllBrainsAction)
+//
+// 驱动层专用 Action
+// 用于在特定时机（如回合开始）重置所有怪物的 Brain 状态
+// 实现细节：调用每个 Brain 的 reset() 方法
 // ==========================================
 class ResetAllBrainsAction : public AbstractAction {
 public:
     ResetAllBrainsAction() = default;
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：丢弃指定卡牌 (Specific Card Discard Action)
+// 指定卡牌弃置动作 (SpecificCardDiscardAction)
+//
+// 委托给 DeckSystem
+// 注意：先发布 ON_CARD_DISCARDED，再移入弃牌堆
 // ==========================================
 class SpecificCardDiscardAction : public AbstractAction {
     std::shared_ptr<AbstractCard> targetCard;
@@ -230,17 +284,17 @@ public:
     SpecificCardDiscardAction(std::shared_ptr<AbstractCard> card)
         : targetCard(card) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：使用卡牌后的善后处理 (Use Card Action)
-// 
-// 核心职责：
-// 1. 从 limbo 滞留区中擦除该卡牌
-// 2. 判定最终去向（消耗堆/弃牌堆/能力牌消失）
-// 
-// 时序：必须在 card->use() 之后执行
+// 使用卡牌动作 (UseCardAction)
+//
+// 滞留区善后：卡牌结算完毕后的最终去向判定
+// 三种归宿：
+// 1. 消耗堆（isExhaust == true）
+// 2. 弃牌堆（普通卡牌）
+// 3. 能力牌（PowerCard）：直接生效，不进任何牌堆
 // ==========================================
 class UseCardAction : public AbstractAction {
     std::shared_ptr<AbstractCard> targetCard;
@@ -249,14 +303,18 @@ public:
     UseCardAction(std::shared_ptr<AbstractCard> card)
         : targetCard(card) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：抽牌动作 (Draw Cards Action)
-// 
-// 从抽牌堆抽取指定数量的牌
-// 自动触发洗牌和爆牌判定
+// 抽牌动作 (DrawCardsAction)
+//
+// 委托给 DeckSystem
+// 内部逻辑：
+// 1. 检查手牌是否已满（>= 10）
+// 2. 若抽牌堆空，自动洗弃牌堆
+// 3. 抽指定数量
+// 4. 每抽一张发布 ON_CARD_DRAWN
 // ==========================================
 class DrawCardsAction : public AbstractAction {
     int amount;
@@ -264,31 +322,35 @@ class DrawCardsAction : public AbstractAction {
 public:
     DrawCardsAction(int a) : amount(a) {}
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：洗牌动作 (Shuffle Discard Into Draw Action)
-// 
-// 将弃牌堆洗入抽牌堆
-// 使用隔离 RNG 保证确定性
+// 洗牌并入抽牌堆动作 (ShuffleDiscardIntoDrawAction)
+//
+// 委托给 DeckSystem
+// 内部逻辑：
+// 1. 将弃牌堆全部移入抽牌堆
+// 2. 调用 std::shuffle 洗牌
+// 3. 发布 ON_SHUFFLE
 // ==========================================
 class ShuffleDiscardIntoDrawAction : public AbstractAction {
 public:
     ShuffleDiscardIntoDrawAction() = default;
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };
 
 // ==========================================
-// 具体动作：弃掉所有手牌动作 (Discard Hand Action)
-// 
-// 将所有手牌移入弃牌堆
-// 用于回合结束时
+// 弃置所有手牌动作 (DiscardHandAction)
+//
+// 委托给 DeckSystem
+// 将手牌全部移入弃牌堆
+// 发布多个 ON_CARD_DISCARDED
 // ==========================================
 class DiscardHandAction : public AbstractAction {
 public:
     DiscardHandAction() = default;
 
-    bool update(GameState& state) override;
+    bool update(GameEngine& engine) override;
 };

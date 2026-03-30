@@ -1,4 +1,5 @@
 #include "Character.h"
+#include "src/engine/GameEngine.h"
 #include "src/relic/AbstractRelic.h"
 #include "src/core/Queries.h"
 #include "src/utils/Logger.h"
@@ -118,11 +119,11 @@ int Character::calculateFinalBlock(int base_block) const {
 
 Character::DamageResult Character::takeDamage(int damage, DamageType type) {
     DamageResult result;
-    
+
     if (damage <= 0) {
         return result;
     }
-    
+
     if (block >= damage) {
         // 护甲完全吸收
         block -= damage;
@@ -146,7 +147,7 @@ Character::DamageResult Character::takeDamage(int damage, DamageType type) {
     
     // 通过 loseHp 进行最终扣血（钨合金棍在这里拦截）
     result.hp_lost = loseHp(hp_to_lose);
-    
+
     return result;
 }
 
@@ -154,7 +155,7 @@ int Character::loseHp(int amount) {
     if (amount <= 0) {
         return 0;
     }
-    
+
     int final_amount = amount;
     
     // 1. 状态拦截（无实体强制变 1 等）
@@ -262,10 +263,11 @@ std::shared_ptr<AbstractPower> Character::getPower(const std::string& powerName)
     return nullptr;
 }
 
-void Character::clearPowers(GameState& state) {
+// clearPowers - 清空所有状态（用于死亡时清理）
+void Character::clearPowers(GameEngine& engine) {
     for (auto& power : powers) {
         if (power) {
-            power->onRemove(state);
+            power->onRemove(engine);
         }
     }
     powers.clear();
@@ -280,7 +282,7 @@ void Character::clearPowers(GameState& state) {
 // - 外部只能通过接口操作
 // ==========================================
 
-void Character::addRelic(std::shared_ptr<AbstractRelic> relic, GameState& state) {
+void Character::addRelic(std::shared_ptr<AbstractRelic> relic, GameEngine& engine) {
     if (!relic) {
         ENGINE_TRACE("addRelic: 尝试添加空指针 Relic");
         return;
@@ -297,10 +299,10 @@ void Character::addRelic(std::shared_ptr<AbstractRelic> relic, GameState& state)
     relics.push_back(relic);
     
     // 触发 onEquip 生命周期
-    relic->onEquip(state, this);
+    relic->onEquip(engine, this);
 }
 
-void Character::removeRelic(std::shared_ptr<AbstractRelic> relic, GameState& state) {
+void Character::removeRelic(std::shared_ptr<AbstractRelic> relic, GameEngine& engine) {
     if (!relic) {
         return;
     }
@@ -308,7 +310,7 @@ void Character::removeRelic(std::shared_ptr<AbstractRelic> relic, GameState& sta
     auto it = std::find(relics.begin(), relics.end(), relic);
     if (it != relics.end()) {
         // 触发 onRemove 生命周期
-        relic->onRemove(state);
+        relic->onRemove(engine);
         relics.erase(it);
     }
 }
@@ -331,10 +333,10 @@ std::shared_ptr<AbstractRelic> Character::getRelic(const std::string& relicName)
     return nullptr;
 }
 
-void Character::clearRelics(GameState& state) {
+void Character::clearRelics(GameEngine& engine) {
     for (auto& relic : relics) {
         if (relic) {
-            relic->onRemove(state);
+            relic->onRemove(engine);
         }
     }
     relics.clear();

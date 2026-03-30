@@ -63,10 +63,10 @@ public:
     }
 
     // 状态挂载时触发，用于注册事件
-    virtual void onApply(GameState& state) {}
+    virtual void onApply(GameEngine& engine) {}
     
     // 状态移除时触发，用于清理（如取消事件订阅）
-    virtual void onRemove(GameState& state) {}
+    virtual void onRemove(GameEngine& engine) {}
     
     // ==========================================
     // 四阶段伤害计算钩子 (Pipeline Hooks)

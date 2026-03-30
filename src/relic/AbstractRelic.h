@@ -40,11 +40,11 @@ public:
     // 子类重写时：
     // 1. 调用基类 onEquip（把自己塞进 owner 的背包）
     // 2. 订阅 EventBus 事件
-    virtual void onEquip(GameState& state, Character* target);
+    virtual void onEquip(GameEngine& engine, Character* target);
     
     // 在移除遗物时调用
     // 子类重写时：取消 EventBus 订阅
-    virtual void onRemove(GameState& state) {}
+    virtual void onRemove(GameEngine& engine) {}
 
     // ==========================================
     // 2. 高频数值拦截器 (Query Pipeline 路线)

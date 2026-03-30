@@ -18,5 +18,5 @@ public:
         : id(i), targetType(target) {}
     virtual ~AbstractPotion() = default;
 
-    virtual void use(GameState& state, std::shared_ptr<Character> target = nullptr) = 0;
+    virtual void use(GameEngine& engine, std::shared_ptr<Character> target = nullptr) = 0;
 };

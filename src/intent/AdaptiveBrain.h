@@ -4,7 +4,7 @@
 #include <functional>
 #include <optional>
 
-using IntentEvaluator = std::function<std::optional<Intent>(GameState&, Monster*, Character*)>;
+using IntentEvaluator = std::function<std::optional<Intent>(CombatState&, Monster*, Character*)>;
 
 class AdaptiveBrain : public IntentBrain {
 private:
@@ -12,5 +12,5 @@ private:
 
 public:
     AdaptiveBrain& addRule(IntentEvaluator eval);
-    Intent decide(GameState& state, Monster* owner) override;
+    Intent decide(CombatState& combat, Monster* owner) override;
 };

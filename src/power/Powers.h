@@ -23,7 +23,7 @@ public:
     float atDamageReceive(float damage, DamageType type, Character* source = nullptr) override;
     
     // 注册轮次结束事件，实现掉层
-    void onApply(GameState& state) override;
+    void onApply(GameEngine& engine) override;
 };
 
 // ==========================================
@@ -38,7 +38,7 @@ public:
     PoisonPower(int amount)
         : AbstractPower("中毒", amount, PowerType::DEBUFF) {}
 
-    void onApply(GameState& state) override;
+    void onApply(GameEngine& engine) override;
 };
 
 class StrengthPower : public AbstractPower {

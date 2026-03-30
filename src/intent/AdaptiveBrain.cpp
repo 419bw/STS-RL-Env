@@ -1,16 +1,16 @@
 #include "AdaptiveBrain.h"
-#include "src/gamestate/GameState.h"
+#include "src/state/CombatState.h"
 
 AdaptiveBrain& AdaptiveBrain::addRule(IntentEvaluator eval) {
     evaluators.push_back(eval);
     return *this;
 }
 
-Intent AdaptiveBrain::decide(GameState& state, Monster* owner) {
-    Character* playerPtr = state.player ? state.player.get() : nullptr;
+Intent AdaptiveBrain::decide(CombatState& combat, Monster* owner) {
+    Character* playerPtr = combat.player ? combat.player.get() : nullptr;
 
     for (auto& eval : evaluators) {
-        if (auto intentOpt = eval(state, owner, playerPtr)) {
+        if (auto intentOpt = eval(combat, owner, playerPtr)) {
             recordMoveId(intentOpt->move_id);
             if (!intentOpt->target && playerPtr) {
                 intentOpt->target = playerPtr;

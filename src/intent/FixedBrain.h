@@ -9,5 +9,5 @@ private:
 
 public:
     FixedBrain(std::vector<Intent> sequence);
-    Intent decide(GameState& state, Monster* owner) override;
+    Intent decide(CombatState& combat, Monster* owner) override;
 };

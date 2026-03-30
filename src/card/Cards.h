@@ -1,50 +1,50 @@
 #pragma once
 
-#include "AbstractCard.h"
+#include "src/card/AbstractCard.h"
 #include "src/core/ForwardDeclarations.h"
 
 // ==========================================
 // 具体卡牌：打击 (Strike)
 // ==========================================
-class StrikeCard : public AbstractCard {
+class StrikeCard : public CloneableCard<StrikeCard> {
 public:
-    StrikeCard() : AbstractCard("Strike", 1, CardType::ATTACK, CardTarget::ENEMY) {}
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    StrikeCard() : CloneableCard("Strike", 1, CardType::ATTACK, CardTarget::ENEMY) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };
 
 // ==========================================
 // 具体卡牌：致命毒药 (Deadly Poison)
 // ==========================================
-class DeadlyPoisonCard : public AbstractCard {
+class DeadlyPoisonCard : public CloneableCard<DeadlyPoisonCard> {
 public:
-    DeadlyPoisonCard() : AbstractCard("Deadly Poison", 1, CardType::SKILL, CardTarget::ENEMY) {}
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    DeadlyPoisonCard() : CloneableCard("Deadly Poison", 1, CardType::SKILL, CardTarget::ENEMY) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };
 
 // ==========================================
 // 具体卡牌：旋风斩 (Whirlwind) - X费牌示例
 // ==========================================
-class WhirlwindCard : public AbstractCard {
+class WhirlwindCard : public CloneableCard<WhirlwindCard> {
 public:
     // cost 设为 -1，代表这是 X 费牌
-    WhirlwindCard() : AbstractCard("Whirlwind", -1, CardType::ATTACK, CardTarget::ALL_ENEMY) {}
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    WhirlwindCard() : CloneableCard("Whirlwind", -1, CardType::ATTACK, CardTarget::ALL_ENEMY) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };
 
 // ==========================================
 // 具体卡牌：飞剑回旋镖 (Shuriken)
 // ==========================================
-class ShurikenCard : public AbstractCard {
+class ShurikenCard : public CloneableCard<ShurikenCard> {
 public:
-    ShurikenCard() : AbstractCard("Shuriken", 1, CardType::ATTACK, CardTarget::RANDOM) {}
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    ShurikenCard() : CloneableCard("Shuriken", 1, CardType::ATTACK, CardTarget::RANDOM) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };
 
 // ==========================================
 // 具体卡牌：痛击 (Pain)
 // ==========================================
-class PainCard : public AbstractCard {
+class PainCard : public CloneableCard<PainCard> {
 public:
-    PainCard() : AbstractCard("Pain", 2, CardType::ATTACK, CardTarget::ENEMY) {}
-    void use(GameState& state, std::shared_ptr<Character> target) override;
+    PainCard() : CloneableCard("Pain", 2, CardType::ATTACK, CardTarget::ENEMY) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };

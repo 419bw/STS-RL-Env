@@ -1,11 +1,11 @@
 // ==========================================
-// 详细对战逻辑演示 (Detailed Battle Demo)
+// 战斗演示 (Battle Demo)
+// 使用三层架构：GameEngine + RunState + CombatState
 // ==========================================
 
 #include <iostream>
 #include <memory>
-#include <random>
-#include "src/gamestate/GameState.h"
+#include "src/engine/GameEngine.h"
 #include "src/flow/CombatFlow.h"
 #include "src/rules/BasicRules.h"
 #include "src/action/PlayerActions.h"
@@ -17,100 +17,107 @@
 #include "src/utils/Logger.h"
 
 int main() {
-    GameState state(1337);
+    // ==========================================
+    // 创建游戏引擎
+    // ==========================================
+    GameEngine engine;
+    engine.startNewRun(1337);
+
+    auto& runState = engine.runState;
+    STS_LOG(*runState, "\n=== [初始化] 游戏引擎创建 ===\n");
+    STS_LOG(*runState, "  玩家: " << runState->player->name << "\n");
+    STS_LOG(*runState, "  HP: " << runState->player->current_hp << "/" << runState->player->max_hp << "\n");
 
     // ==========================================
-    // 1. 玩家初始化：80 HP, 3 能量, 初始手牌 5 张
+    // 创建战斗
     // ==========================================
-    STS_LOG(state, "\n=== [初始化] 玩家创建 ===\n");
-    STS_LOG(state, "  玩家: " << state.player->name << "\n");
-    STS_LOG(state, "  HP: " << state.player->current_hp << "/" << state.player->max_hp << "\n");
-    STS_LOG(state, "  能量: " << state.player->getEnergy() << "\n");
-
-    // ==========================================
-    // 2. 怪物阵容
-    // ==========================================
-    STS_LOG(state, "\n=== [初始化] 怪物阵容 ===\n");
+    STS_LOG(*runState, "\n=== [初始化] 怪物阵容 ===\n");
 
     // JawWorm - 有趣的 AI 行为：基于 move history 做决策
-    auto jawWorm = std::make_shared<JawWorm>(0);  // ascension 0
+    auto jawWorm = std::make_shared<JawWorm>(0);
     jawWorm->name = "JawWorm";
-    state.monsters.push_back(jawWorm);
-    STS_LOG(state, "  [AI类型] JawWorm: 基于 move history 做决策\n");
-    STS_LOG(state, "    HP: " << jawWorm->current_hp << "/" << jawWorm->max_hp << "\n");
-    STS_LOG(state, "    Brain: JawWormBrain (CHOMP/BELLOW/THRASH)\n");
+    STS_LOG(*runState, "  [AI类型] JawWorm: 基于 move history 做决策\n");
+    STS_LOG(*runState, "    HP: " << jawWorm->current_hp << "/" << jawWorm->max_hp << "\n");
 
-    // Generic Monster 1 - FixedBrain 对照组（固定意图序列）
+    // Generic Monster - FixedBrain 对照组
     auto generic1 = std::make_shared<Monster>("先锋怪", 40);
     generic1->setBrain(std::make_shared<FixedBrain>(std::vector<Intent>{
         {IntentType::ATTACK, 8, 1, 0, nullptr, true, 1, " Strike"},
         {IntentType::DEFEND, 0, 0, 5, nullptr, true, 2, " Guard"},
         {IntentType::ATTACK, 12, 1, 0, nullptr, true, 3, " Heavy Strike"}
     }));
-    state.monsters.push_back(generic1);
-    STS_LOG(state, "  [AI类型] 先锋怪: FixedBrain (ATTACK→DEFEND→ATTACK 循环)\n");
-    STS_LOG(state, "    HP: " << generic1->current_hp << "/" << generic1->max_hp << "\n");
+    STS_LOG(*runState, "  [AI类型] 先锋怪: FixedBrain (ATTACK→DEFEND→ATTACK 循环)\n");
+    STS_LOG(*runState, "    HP: " << generic1->current_hp << "/" << generic1->max_hp << "\n");
 
-    // Generic Monster 2 - FixedBrain 对照组（不同序列）
+    // Generic Monster 2
     auto generic2 = std::make_shared<Monster>("后卫怪", 35);
     generic2->setBrain(std::make_shared<FixedBrain>(std::vector<Intent>{
         {IntentType::DEFEND, 0, 0, 8, nullptr, true, 1, " Brace"},
         {IntentType::ATTACK, 6, 2, 0, nullptr, true, 2, " Double Strike"},
         {IntentType::ATTACK, 10, 1, 0, nullptr, true, 3, " Slam"}
     }));
-    state.monsters.push_back(generic2);
-    STS_LOG(state, "  [AI类型] 后卫怪: FixedBrain (DEFEND→ATTACK×2→ATTACK 循环)\n");
-    STS_LOG(state, "    HP: " << generic2->current_hp << "/" << generic2->max_hp << "\n");
+    STS_LOG(*runState, "  [AI类型] 后卫怪: FixedBrain (DEFEND→ATTACK×2→ATTACK 循环)\n");
+    STS_LOG(*runState, "    HP: " << generic2->current_hp << "/" << generic2->max_hp << "\n");
 
     // ==========================================
-    // 3. 初始化牌库：初始牌组
+    // 初始化牌库
     // ==========================================
-    STS_LOG(state, "\n=== [初始化] 牌库构建 ===\n");
+    STS_LOG(*runState, "\n=== [初始化] 牌库构建 ===\n");
 
     // 攻击牌：Strike x5
     for (int i = 0; i < 5; ++i) {
-        state.discardPile.push_back(std::make_shared<StrikeCard>());
+        runState->masterDeck.push_back(std::make_shared<StrikeCard>());
     }
-    // 技能牌：Defend x4 (如果存在)
     // 毒素牌：Deadly Poison x3
     for (int i = 0; i < 3; ++i) {
-        state.discardPile.push_back(std::make_shared<DeadlyPoisonCard>());
+        runState->masterDeck.push_back(std::make_shared<DeadlyPoisonCard>());
     }
     // AOE牌：Whirlwind x2
     for (int i = 0; i < 2; ++i) {
-        state.discardPile.push_back(std::make_shared<WhirlwindCard>());
+        runState->masterDeck.push_back(std::make_shared<WhirlwindCard>());
     }
     // 飞刀牌：Shuriken x3
     for (int i = 0; i < 3; ++i) {
-        state.discardPile.push_back(std::make_shared<ShurikenCard>());
+        runState->masterDeck.push_back(std::make_shared<ShurikenCard>());
     }
 
-    STS_LOG(state, "  弃牌堆: " << state.discardPile.size() << " 张\n");
-    STS_LOG(state, "    - Strike: 5 张 (1费 攻击)\n");
-    STS_LOG(state, "    - Deadly Poison: 3 张 (1费 中毒)\n");
-    STS_LOG(state, "    - Whirlwind: 2 张 (X费 AOE)\n");
-    STS_LOG(state, "    - Shuriken: 3 张 (1费 攻击)\n");
+    STS_LOG(*runState, "  总卡组: " << runState->masterDeck.size() << " 张\n");
+    STS_LOG(*runState, "    - Strike: 5 张 (1费 攻击)\n");
+    STS_LOG(*runState, "    - Deadly Poison: 3 张 (1费 中毒)\n");
+    STS_LOG(*runState, "    - Whirlwind: 2 张 (X费 AOE)\n");
+    STS_LOG(*runState, "    - Shuriken: 3 张 (1费 攻击)\n");
 
     // ==========================================
-    // 4. 注册基础规则
+    // 进入战斗
     // ==========================================
-    CombatFlow flow;
-    BasicRules::registerRules(state);
-    STS_LOG(state, "\n=== [初始化] 基础规则注册完成 ===\n");
+    engine.startCombat(jawWorm);
+    // 手动添加其他怪物
+    engine.combatState->monsters.push_back(generic1);
+    engine.combatState->monsters.push_back(generic2);
+
+    // 注册基础规则
+    BasicRules::registerRules(engine);
+    STS_LOG(*runState, "\n=== [初始化] 基础规则注册完成 ===\n");
 
     // ==========================================
-    // 5. 战斗主循环
+    // 战斗主循环
     // ==========================================
-    STS_LOG(state, "\n");
-    STS_LOG(state, "########################################\n");
-    STS_LOG(state, "#         战斗开始！                   #\n");
-    STS_LOG(state, "########################################\n");
+    STS_LOG(*runState, "\n");
+    STS_LOG(*runState, "########################################\n");
+    STS_LOG(*runState, "#         战斗开始！                   #\n");
+    STS_LOG(*runState, "########################################\n");
 
     int lastTurnCount = 0;
-    int maxTurns = 20;  // 防止无限循环
+    int maxTurns = 20;
+    CombatFlow flow;
 
-    for (int step = 0; step < maxTurns * 10 && flow.currentState != CombatState::BATTLE_END; ++step) {
-        flow.tick(state);
+    while (engine.combatState &&
+           flow.getCurrentPhase() != BattlePhase::BATTLE_END &&
+           engine.combatState->turnCount < maxTurns) {
+
+        flow.tick(engine);
+
+        auto& state = *engine.combatState;
 
         // ==========================================
         // 回合开始：输出怪物意图
@@ -135,9 +142,9 @@ int main() {
         }
 
         // ==========================================
-        // 玩家回合开始：抽牌日志
+        // 玩家回合开始：抽牌完成后在手牌阶段输出
         // ==========================================
-        if (flow.currentState == CombatState::PLAYER_TURN_START) {
+        if (flow.getCurrentPhase() == BattlePhase::PLAYER_ACTION) {
             STS_LOG(state, "\n");
             STS_LOG(state, "----------------------------------------\n");
             STS_LOG(state, "玩家回合开始 - 当前状态:\n");
@@ -158,7 +165,7 @@ int main() {
         // ==========================================
         // 回合结束：输出牌堆状态
         // ==========================================
-        if (flow.currentState == CombatState::MONSTER_TURN_END) {
+        if (flow.getCurrentPhase() == BattlePhase::MONSTER_TURN_END) {
             STS_LOG(state, "\n");
             STS_LOG(state, "----------------------------------------\n");
             STS_LOG(state, "回合结束 - 牌堆状态:\n");
@@ -172,29 +179,20 @@ int main() {
         // ==========================================
         // 玩家行动阶段：简单 AI 出牌逻辑
         // ==========================================
-        if (flow.currentState == CombatState::PLAYER_ACTION &&
-            state.currentPhase == StatePhase::PLAYING_CARD &&
-            state.isActionQueueEmpty()) {
-
-            // 第一次出牌前输出手牌列表
-            STS_LOG(state, "  当前手牌:\n");
-            for (size_t i = 0; i < state.hand.size(); ++i) {
-                auto& card = state.hand[i];
-                STS_LOG(state, "    [" << (i + 1) << "] " << card->id
-                          << " (费用:" << card->cost << ")\n");
-            }
+        if (flow.getCurrentPhase() == BattlePhase::PLAYER_ACTION &&
+            engine.actionManager.isQueueEmpty()) {
 
             // 检查手牌
             if (state.hand.empty()) {
                 STS_LOG(state, "\n>>> AI 决策：手牌为空，结束回合 <<<\n");
-                PlayerActions::endTurn(state, flow);
+                PlayerActions::endTurn(engine, flow);
                 continue;
             }
 
             // 检查能量
             if (state.player->getEnergy() <= 0) {
                 STS_LOG(state, "\n>>> AI 决策：能量耗尽，结束回合 <<<\n");
-                PlayerActions::endTurn(state, flow);
+                PlayerActions::endTurn(engine, flow);
                 continue;
             }
 
@@ -226,7 +224,7 @@ int main() {
             // 无可用牌
             if (!selectedCard) {
                 STS_LOG(state, "\n>>> AI 决策：无可用牌，结束回合 <<<\n");
-                PlayerActions::endTurn(state, flow);
+                PlayerActions::endTurn(engine, flow);
                 continue;
             }
 
@@ -248,7 +246,7 @@ int main() {
                     }
                 } else {
                     STS_LOG(state, "[警告] 没有存活怪物，停止出牌\n");
-                    PlayerActions::endTurn(state, flow);
+                    PlayerActions::endTurn(engine, flow);
                     continue;
                 }
             }
@@ -268,54 +266,58 @@ int main() {
             }
             STS_LOG(state, "    剩余能量: " << state.player->getEnergy() << "\n");
 
-            PlayerActions::playCard(state, flow, selectedCard, target);
+            PlayerActions::playCard(engine, flow, selectedCard, target);
         }
 
         // ==========================================
         // 战斗结束检测
         // ==========================================
-        if (flow.currentState == CombatState::BATTLE_END) {
+        if (!engine.combatState ||
+            flow.getCurrentPhase() == BattlePhase::BATTLE_END) {
             break;
         }
     }
 
     // ==========================================
-    // 6. 战斗结果
+    // 战斗结果
     // ==========================================
-    STS_LOG(state, "\n");
-    STS_LOG(state, "########################################\n");
-    if (state.isPlayerDead) {
-        STS_LOG(state, "#         游戏失败 (GAME OVER)        #\n");
-    } else if (state.isMonsterDead) {
-        STS_LOG(state, "#         战斗胜利！                   #\n");
-    } else {
-        STS_LOG(state, "#         战斗超时 (Max Turns)         #\n");
+    if (engine.combatState) {
+        STS_LOG(*engine.combatState, "\n");
+        STS_LOG(*engine.combatState, "########################################\n");
+        if (engine.combatState->isPlayerDead) {
+            STS_LOG(*engine.combatState, "#         游戏失败 (GAME OVER)        #\n");
+        } else if (engine.combatState->isMonsterDead) {
+            STS_LOG(*engine.combatState, "#         战斗胜利！                   #\n");
+        } else {
+            STS_LOG(*engine.combatState, "#         战斗超时 (Max Turns)         #\n");
+        }
+        STS_LOG(*engine.combatState, "########################################\n");
+
+        // ==========================================
+        // 最终状态报告
+        // ==========================================
+        STS_LOG(*engine.combatState, "\n=== [最终状态] ===\n");
+        STS_LOG(*engine.combatState, "玩家:\n");
+        STS_LOG(*engine.combatState, "  HP: " << engine.combatState->player->current_hp << "/"
+                  << engine.combatState->player->max_hp << "\n");
+        STS_LOG(*engine.combatState, "  护甲: " << engine.combatState->player->block << "\n");
+        STS_LOG(*engine.combatState, "  能量: " << engine.combatState->player->getEnergy() << "\n");
+
+        STS_LOG(*engine.combatState, "\n怪物:\n");
+        for (auto& monster : engine.combatState->monsters) {
+            STS_LOG(*engine.combatState, "  " << monster->name << ": "
+                      << (monster->isDead() ? "已击败" : "存活")
+                      << " HP:" << monster->current_hp << "/" << monster->max_hp << "\n");
+        }
+
+        STS_LOG(*engine.combatState, "\n牌堆:\n");
+        STS_LOG(*engine.combatState, "  抽牌堆: " << engine.combatState->drawPile.size() << " 张\n");
+        STS_LOG(*engine.combatState, "  手牌: " << engine.combatState->hand.size() << " 张\n");
+        STS_LOG(*engine.combatState, "  弃牌堆: " << engine.combatState->discardPile.size() << " 张\n");
+        STS_LOG(*engine.combatState, "  消耗堆: " << engine.combatState->exhaustPile.size() << " 张\n");
+
+        STS_LOG(*engine.combatState, "\n总回合数: " << engine.combatState->turnCount << "\n");
     }
-    STS_LOG(state, "########################################\n");
-
-    // ==========================================
-    // 7. 最终状态报告
-    // ==========================================
-    STS_LOG(state, "\n=== [最终状态] ===\n");
-    STS_LOG(state, "玩家:\n");
-    STS_LOG(state, "  HP: " << state.player->current_hp << "/" << state.player->max_hp << "\n");
-    STS_LOG(state, "  护甲: " << state.player->block << "\n");
-    STS_LOG(state, "  能量: " << state.player->getEnergy() << "\n");
-
-    STS_LOG(state, "\n怪物:\n");
-    for (auto& monster : state.monsters) {
-        STS_LOG(state, "  " << monster->name << ": "
-                  << (monster->isDead() ? "已击败" : "存活")
-                  << " HP:" << monster->current_hp << "/" << monster->max_hp << "\n");
-    }
-
-    STS_LOG(state, "\n牌堆:\n");
-    STS_LOG(state, "  抽牌堆: " << state.drawPile.size() << " 张\n");
-    STS_LOG(state, "  手牌: " << state.hand.size() << " 张\n");
-    STS_LOG(state, "  弃牌堆: " << state.discardPile.size() << " 张\n");
-    STS_LOG(state, "  消耗堆: " << state.exhaustPile.size() << " 张\n");
-
-    STS_LOG(state, "\n总回合数: " << state.turnCount << "\n");
 
     return 0;
 }

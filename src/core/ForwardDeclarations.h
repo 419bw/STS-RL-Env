@@ -7,8 +7,12 @@
 
 class GameState;
 class CombatFlow;
+class GameEngine;
+class RunState;
+class CombatState;
 class Character;
 class Monster;
+class Player;
 class AbstractCard;
 class AbstractPotion;
 class AbstractRelic;

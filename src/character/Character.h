@@ -122,9 +122,9 @@ public:
     
     // 获取状态数量
     size_t getPowerCount() const { return powers.size(); }
-    
-    // 清空所有状态
-    void clearPowers(GameState& state);
+
+    // 清空所有状态（用于死亡时清理）
+    void clearPowers(GameEngine& engine);
 
     // 遍历状态的只读访问（用于计算层遍历）
     // 使用回调函数模式，避免暴露内部容器
@@ -160,10 +160,10 @@ public:
     // ==========================================
     
     // 添加遗物（自动触发 onEquip）
-    void addRelic(std::shared_ptr<class AbstractRelic> relic, GameState& state);
+    void addRelic(std::shared_ptr<class AbstractRelic> relic, GameEngine& engine);
     
     // 移除遗物（自动触发 onRemove）
-    void removeRelic(std::shared_ptr<class AbstractRelic> relic, GameState& state);
+    void removeRelic(std::shared_ptr<class AbstractRelic> relic, GameEngine& engine);
     
     // 检查是否存在指定名称的遗物
     bool hasRelic(const std::string& relicName) const;
@@ -175,7 +175,7 @@ public:
     size_t getRelicCount() const { return relics.size(); }
     
     // 清空所有遗物
-    void clearRelics(GameState& state);
+    void clearRelics(GameEngine& engine);
     
     // 遍历遗物的只读访问（用于计算层遍历）
     template<typename Func>
@@ -251,16 +251,16 @@ public:
     bool deathReported;
 
     Monster(std::string n, int hp);
-    void rollIntent(GameState& state);
+    void rollIntent(GameEngine& engine);
     void setBrain(IntentBrainPtr b);
     IntentBrainPtr getBrain() const { return brain; }
 
     const Intent& getRealIntent() const { return currentIntent; }
-    Intent getVisibleIntent(const GameState& state) const;
+    Intent getVisibleIntent(const CombatState& combat) const;
 
-    virtual void takeTurn(GameState& state);
+    virtual void takeTurn(GameEngine& engine);
 protected:
-    virtual void executeSpecialIntent(GameState& state) {}
+    virtual void executeSpecialIntent(GameEngine& engine) {}
 
 private:
     IntentBrainPtr brain;

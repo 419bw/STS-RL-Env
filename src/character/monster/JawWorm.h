@@ -11,5 +11,5 @@ private:
 public:
     JawWorm(int ascensionLevel = 0);
     void initializeStats(int ascensionLevel);
-    void executeSpecialIntent(GameState& state) override;
+    void executeSpecialIntent(GameEngine& engine) override;
 };

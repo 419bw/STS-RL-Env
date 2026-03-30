@@ -9,5 +9,5 @@ private:
 
 public:
     RandomBrain(std::vector<Intent> intents);
-    Intent decide(GameState& state, Monster* owner) override;
+    Intent decide(CombatState& combat, Monster* owner) override;
 };

@@ -1,16 +1,21 @@
 #include "CombatFlow.h"
-#include "src/gamestate/GameState.h"
-#include "src/system/ActionSystem.h"
+#include "src/engine/GameEngine.h"
+#include "src/action/ActionManager.h"
 #include "src/utils/Logger.h"
 #include <iostream>
 
+CombatFlow::CombatFlow() : currentPhase(BattlePhase::BATTLE_START) {}
+
 // ==========================================
 // SBA 全局巡视 (State-Based Action Check)
-// 
+//
 // 在每个动作执行完毕后调用
 // 检查全局状态变化，如死亡判定
 // ==========================================
-void CombatFlow::sbaGlobalCheck(GameState& state) {
+void CombatFlow::sbaGlobalCheck(GameEngine& engine) {
+    if (!engine.combatState) return;
+
+    auto& state = *engine.combatState;
     // 1. 玩家死亡判定
     if (!state.isPlayerDead && state.player->isDead()) {
         state.isPlayerDead = true;
@@ -25,7 +30,7 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
             // 播报死亡（只播报一次）
             if (!monster->deathReported) {
                 // 清理死亡怪物身上的所有 power
-                monster->clearPowers(state);
+                monster->clearPowers(engine);
 
                 STS_LOG(state, "\n>>> [死亡] " << monster->name << " 被击败！ <<<\n");
                 monster->deathReported = true;
@@ -51,130 +56,141 @@ void CombatFlow::sbaGlobalCheck(GameState& state) {
 // ==========================================
 // 检查战斗结束条件
 // ==========================================
-void CombatFlow::checkBattleEndCondition(GameState& state) {
-    if (state.isPlayerDead || state.isMonsterDead) {
-        currentState = CombatState::BATTLE_END;
+void CombatFlow::checkBattleEndCondition(GameEngine& engine) {
+    if (!engine.combatState) return;
+
+    if (engine.combatState->isPlayerDead || engine.combatState->isMonsterDead) {
+        currentPhase = BattlePhase::BATTLE_END;
     }
 }
 
 // ==========================================
 // 核心推进函数 (Tick)
-// 
+//
 // 铁律：CombatFlow 绝对不知道具体的 Action
 // 只负责推动时间流逝和发布广播
-// 
-// 铁律：所有动作队列执行由 ActionSystem 统一负责
+//
+// 铁律：所有动作队列执行由 ActionManager 统一负责
 // CombatFlow 只负责状态跃迁和事件发布
+//
+// 注意：使用自己的 currentPhase 状态，不会干扰 combatState->currentPhase
 // ==========================================
 
-void CombatFlow::tick(GameState& state) {
+void CombatFlow::tick(GameEngine& engine) {
     // 宏观层面 - 状态跃迁与广播
     // 绝对不出现具体的 Action 类！
-    switch (currentState) {
-        case CombatState::BATTLE_START:
+    if (!engine.combatState) return;
+
+    auto& state = *engine.combatState;
+
+    switch (currentPhase) {
+        case BattlePhase::BATTLE_START:
             STS_LOG(state, "\n=== [PHASE] 战斗开始 ===\n");
-            state.eventBus.publish(EventType::PHASE_BATTLE_START, state);
-            ActionSystem::executeUntilBlocked(state, *this);
-            currentState = CombatState::ROUND_START;
+            engine.eventBus.publish(EventType::PHASE_BATTLE_START, engine);
+            engine.actionManager.executeUntilBlocked(engine, *this);
+            currentPhase = BattlePhase::ROUND_START;
             break;
 
-        case CombatState::ROUND_START:
+        case BattlePhase::ROUND_START:
             state.turnCount++;
             STS_LOG(state, "\n=== [PHASE] 第 " << state.turnCount << " 轮次开始 ===\n");
-            state.eventBus.publish(EventType::PHASE_ROUND_START, state);
-            ActionSystem::executeUntilBlocked(state, *this);
-            currentState = CombatState::PLAYER_TURN_START;
+            engine.eventBus.publish(EventType::PHASE_ROUND_START, engine);
+            engine.actionManager.executeUntilBlocked(engine, *this);
+            currentPhase = BattlePhase::PLAYER_TURN_START;
             break;
 
-        case CombatState::PLAYER_TURN_START:
+        case BattlePhase::PLAYER_TURN_START:
             state.player->resetEnergy(3);
             state.player->block = 0;
             state.isPlayerTurn = true;
             state.currentPhase = StatePhase::PLAYING_CARD;
             STS_LOG(state, "\n=== [PHASE] 玩家回合开始 ===\n");
-            
-            state.eventBus.publish(EventType::PHASE_PLAYER_TURN_START, state);
-            state.eventBus.publish(EventType::ON_TURN_START, state, state.player.get());
-            ActionSystem::executeUntilBlocked(state, *this);
-            
-            currentState = CombatState::PLAYER_ACTION;
+
+            engine.eventBus.publish(EventType::PHASE_PLAYER_TURN_START, engine);
+            engine.eventBus.publish(EventType::ON_TURN_START, engine, state.player.get());
+            engine.actionManager.executeUntilBlocked(engine, *this);
+
+            currentPhase = BattlePhase::PLAYER_ACTION;
             break;
 
-        case CombatState::PLAYER_ACTION:
+        case BattlePhase::PLAYER_ACTION:
             break;
 
-        case CombatState::PLAYER_TURN_END:
+        case BattlePhase::PLAYER_TURN_END:
             state.isPlayerTurn = false;
             STS_LOG(state, "\n=== [PHASE] 玩家回合结束 ===\n");
-            
-            state.eventBus.publish(EventType::PHASE_PLAYER_TURN_END, state);
-            state.eventBus.publish(EventType::ON_TURN_END, state, state.player.get());
-            ActionSystem::executeUntilBlocked(state, *this);
-            
-            currentState = CombatState::MONSTER_TURN_START;
+
+            engine.eventBus.publish(EventType::PHASE_PLAYER_TURN_END, engine);
+            engine.eventBus.publish(EventType::ON_TURN_END, engine, state.player.get());
+            engine.actionManager.executeUntilBlocked(engine, *this);
+
+            currentPhase = BattlePhase::MONSTER_TURN_START;
             break;
 
-        case CombatState::MONSTER_TURN_START:
+        case BattlePhase::MONSTER_TURN_START:
             STS_LOG(state, "\n=== [PHASE] 怪物回合开始 ===\n");
-            
-            state.eventBus.publish(EventType::PHASE_MONSTER_TURN_START, state);
-            
+
+            engine.eventBus.publish(EventType::PHASE_MONSTER_TURN_START, engine);
+
             for (auto& monster : state.monsters) {
                 if (!monster->isDead()) {
-                    state.eventBus.publish(EventType::ON_TURN_START, state, monster.get());
+                    engine.eventBus.publish(EventType::ON_TURN_START, engine, monster.get());
                 }
             }
-            ActionSystem::executeUntilBlocked(state, *this);
-            
-            currentState = CombatState::MONSTER_TURN;
+            engine.actionManager.executeUntilBlocked(engine, *this);
+
+            currentPhase = BattlePhase::MONSTER_TURN;
             break;
 
-        case CombatState::MONSTER_TURN:
+        case BattlePhase::MONSTER_TURN:
             STS_LOG(state, "\n=== [PHASE] 怪物行动 ===\n");
-            
-            state.eventBus.publish(EventType::PHASE_MONSTER_TURN, state);
-            ActionSystem::executeUntilBlocked(state, *this);
-            
-            currentState = CombatState::MONSTER_TURN_END;
+
+            engine.eventBus.publish(EventType::PHASE_MONSTER_TURN, engine);
+            engine.actionManager.executeUntilBlocked(engine, *this);
+
+            currentPhase = BattlePhase::MONSTER_TURN_END;
             break;
 
-        case CombatState::MONSTER_TURN_END:
+        case BattlePhase::MONSTER_TURN_END:
             STS_LOG(state, "\n=== [PHASE] 怪物回合结束 ===\n");
 
-            state.eventBus.publish(EventType::PHASE_MONSTER_TURN_END, state);
+            engine.eventBus.publish(EventType::PHASE_MONSTER_TURN_END, engine);
 
             for (auto& monster : state.monsters) {
                 if (!monster->isDead()) {
-                    state.eventBus.publish(EventType::ON_TURN_END, state, monster.get());
+                    engine.eventBus.publish(EventType::ON_TURN_END, engine, monster.get());
                 }
             }
-            ActionSystem::executeUntilBlocked(state, *this);
-            currentState = CombatState::ROUND_END;
+            engine.actionManager.executeUntilBlocked(engine, *this);
+            currentPhase = BattlePhase::ROUND_END;
             break;
 
-        case CombatState::ROUND_END:
+        case BattlePhase::ROUND_END:
             STS_LOG(state, "\n=== [PHASE] 轮次结束 (结算状态效果) ===\n");
-            
-            state.eventBus.publish(EventType::PHASE_ROUND_END, state);
-            state.eventBus.publish(EventType::ON_ROUND_END, state);
-            ActionSystem::executeUntilBlocked(state, *this);
-            
-            sbaGlobalCheck(state);
-            checkBattleEndCondition(state);
-            if (currentState != CombatState::BATTLE_END) {
-                currentState = CombatState::ROUND_START;
+
+            engine.eventBus.publish(EventType::PHASE_ROUND_END, engine);
+            engine.eventBus.publish(EventType::ON_ROUND_END, engine);
+            engine.actionManager.executeUntilBlocked(engine, *this);
+
+            sbaGlobalCheck(engine);
+            checkBattleEndCondition(engine);
+            if (currentPhase != BattlePhase::BATTLE_END) {
+                currentPhase = BattlePhase::ROUND_START;
             }
             break;
 
-        case CombatState::BATTLE_END:
+        case BattlePhase::BATTLE_END:
             STS_LOG(state, "\n=== [PHASE] 战斗结束 ===\n");
-            state.eventBus.publish(EventType::PHASE_BATTLE_END, state);
-            
+            engine.eventBus.publish(EventType::PHASE_BATTLE_END, engine);
+
             if (state.isPlayerDead) {
                 STS_LOG(state, ">>> 游戏失败 (GAME OVER) <<<\n");
             } else if (state.isMonsterDead) {
                 STS_LOG(state, ">>> 战斗胜利！结算金币和卡牌奖励... <<<\n");
             }
+            break;
+
+        default:
             break;
     }
 }

@@ -4,7 +4,7 @@
 #include <memory>
 #include "Intent.h"
 
-class GameState;
+class CombatState;
 class Monster;
 
 class IntentBrain {
@@ -13,7 +13,7 @@ protected:
 
 public:
     virtual ~IntentBrain() = default;
-    virtual Intent decide(GameState& state, Monster* owner) = 0;
+    virtual Intent decide(CombatState& combat, Monster* owner) = 0;
     virtual void initializeStats(int ascensionLevel);
     virtual void reset();
     bool lastMove(int moveId) const;

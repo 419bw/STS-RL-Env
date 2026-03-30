@@ -6,6 +6,7 @@
 #include <optional>
 #include <random>
 #include "src/core/Types.h"
+#include "src/core/RandomManager.h"
 #include "src/event/EventBus.h"
 #include "src/character/Character.h"
 #include "src/action/AbstractAction.h"
@@ -13,29 +14,11 @@
 
 // ==========================================
 // RandomManager - 隔离随机数生成器
-// 
-// 核心原则：绝对局部确定性
-// - 每个用途使用独立的 RNG，互不干扰
-// - 保证多线程环境下可复现
-// - 严禁使用全局 RNG
+// 已移至 src/core/RandomManager.h
 // ==========================================
-struct RandomManager {
-    std::mt19937 shuffleRng;     // 专用于洗牌 (核心隔离)
-    std::mt19937 monsterRng;     // 专用于怪物意图生成
-    std::mt19937 combatRng;      // 专用于战斗内随机效果 (随机伤害/弃牌等)
-    std::mt19937 mapAndDropRng;  // 专用于局外大盘掉落 (遗物/地图等)
-
-    RandomManager(unsigned int masterSeed = 1337) {
-        std::mt19937 masterGenerator(masterSeed);
-        shuffleRng.seed(masterGenerator());
-        monsterRng.seed(masterGenerator());
-        combatRng.seed(masterGenerator());
-        mapAndDropRng.seed(masterGenerator());
-    }
-};
 
 // ==========================================
-// GameState - 纯数据容器 (Anemic Domain Model)
+// GameState - 纯数据容器 (Anemic Domain Model) 已弃用
 // 
 // 铁律一：GameState 必须是纯数据容器
 // 内部禁止包含任何游戏业务逻辑代码
