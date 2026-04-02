@@ -9,12 +9,12 @@
 enum class NodeType {
     MONSTER,     // 普通怪物房 (M)
     ELITE,       // 精英怪房 (E)
-    BOSS,        // Boss 房 (B)
-    SHOP,        // 商店 ($)
     REST,        // 营火/休息 (R)
-    EVENT,       // 事件 (?)
+    MERCHANT,    // 商店 ($)
     TREASURE,    // 宝箱房 (T)
-    UNKNOWN      // 未知的/问号 (?) — 用于遮挡未探索节点
+    UNKNOWN,     // 事件房 (?) — 玩家未探索前的问号状态
+    BOSS,        // Boss 房 (B)
+    NONE         // 骨架占位 — 无房间，仅用于拓扑填充前的空白节点
 };
 
 // ==========================================

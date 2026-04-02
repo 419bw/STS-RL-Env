@@ -8,7 +8,7 @@
 // 数据结构（来自规范，不可修改）
 // ==========================================
 enum class NodeType {
-    MONSTER, ELITE, REST, MERCHANT, TREASURE, UNKNOWN, BOSS
+    MONSTER, ELITE, REST, MERCHANT, TREASURE, UNKNOWN, BOSS, NONE
 };
 
 struct MapNode {
@@ -38,8 +38,7 @@ using MapData = std::vector<std::vector<MapNode>>;
 // 每层 ROWS_PER_FLOOR=4 行，节点画在 offset=3（层底），connector 画在 offset=0（层顶）：
 //   row 0: connector row (midpoint between y and y+1)
 //   row 1: blank
-//   row 2: blank
-//   row 3: node box
+//   row 2: node box
 // 行公式: nodeRow(y) = (maxFloor-y)*4 + 3
 //         midRow(y,y+1) = (nodeRow(y) + nodeRow(y+1))/2 = (maxFloor-y)*4 - 1
 //
