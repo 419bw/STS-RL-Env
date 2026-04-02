@@ -33,10 +33,24 @@ g++ -std=c++17 -I "j:\学习\项目\STS_CPP" -c "j:\学习\项目\STS_CPP\src\in
 g++ -std=c++17 -I "j:\学习\项目\STS_CPP" -c "j:\学习\项目\STS_CPP\src\intent\brains\JawWormBrain.cpp" -o "j:\学习\项目\STS_CPP\build\JawWormBrain.o"
 ```
 
+### 地图模块（独立测试，不依赖战斗引擎）
+
+```powershell
+g++ -std=c++17 -I "j:\学习\项目\STS_CPP" -c "j:\学习\项目\STS_CPP\src\map\GameMap.cpp" -o "j:\学习\项目\STS_CPP\build\GameMap.o"
+g++ -std=c++17 -I "j:\学习\项目\STS_CPP" -c "j:\学习\项目\STS_CPP\src\map\MapRenderer.cpp" -o "j:\学习\项目\STS_CPP\build\MapRenderer.o"
+g++ -std=c++17 -I "j:\学习\项目\STS_CPP" -c "j:\学习\项目\STS_CPP\src\test\TestMapRenderer.cpp" -o "j:\学习\项目\STS_CPP\build\TestMapRenderer.o"
+```
+
 ### 2. 链接生成可执行文件
 
 ```powershell
 g++ -std=c++17 "j:\学习\项目\STS_CPP\build\main.o" "j:\学习\项目\STS_CPP\build\Actions.o" "j:\学习\项目\STS_CPP\build\PlayerActions.o" "j:\学习\项目\STS_CPP\build\LambdaAction.o" "j:\学习\项目\STS_CPP\build\ActionManager.o" "j:\学习\项目\STS_CPP\build\Character.o" "j:\学习\项目\STS_CPP\build\Monster.o" "j:\学习\项目\STS_CPP\build\JawWorm.o" "j:\学习\项目\STS_CPP\build\Intent.o" "j:\学习\项目\STS_CPP\build\IntentBrain.o" "j:\学习\项目\STS_CPP\build\FixedBrain.o" "j:\学习\项目\STS_CPP\build\RandomBrain.o" "j:\学习\项目\STS_CPP\build\AdaptiveBrain.o" "j:\学习\项目\STS_CPP\build\JawWormBrain.o" "j:\学习\项目\STS_CPP\build\Cards.o" "j:\学习\项目\STS_CPP\build\Relics.o" "j:\学习\项目\STS_CPP\build\AbstractRelic.o" "j:\学习\项目\STS_CPP\build\GameState.o" "j:\学习\项目\STS_CPP\build\GameEngine.o" "j:\学习\项目\STS_CPP\build\RunState.o" "j:\学习\项目\STS_CPP\build\CombatState.o" "j:\学习\项目\STS_CPP\build\DeckSystem.o" "j:\学习\项目\STS_CPP\build\CombatFlow.o" "j:\学习\项目\STS_CPP\build\BasicRules.o" "j:\学习\项目\STS_CPP\build\Powers.o" "j:\学习\项目\STS_CPP\build\Potions.o" -o "j:\学习\项目\STS_CPP\build\STS_Game.exe"
+```
+
+#### 地图渲染测试（独立可执行文件）
+
+```powershell
+g++ -std=c++17 "j:\学习\项目\STS_CPP\build\TestMapRenderer.o" "j:\学习\项目\STS_CPP\build\GameMap.o" "j:\学习\项目\STS_CPP\build\MapRenderer.o" -o "j:\学习\项目\STS_CPP\build\TestMapRenderer.exe"
 ```
 
 ### 3. 运行验证
@@ -79,3 +93,5 @@ g++ -std=c++17 "j:\学习\项目\STS_CPP\build\main.o" "j:\学习\项目\STS_CPP
 | rules | BasicRules.cpp |
 | power | Powers.cpp |
 | potion | Potions.cpp |
+| map | GameMap.cpp, MapRenderer.cpp |
+| test | TestMapRenderer.cpp |
