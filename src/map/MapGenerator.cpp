@@ -170,7 +170,7 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
 
     int y = node.y - 1;
 
-    for (auto it = roomList.rbegin(); it != roomList.rend(); ++it) {
+    for (auto it = roomList.begin(); it != roomList.end(); ++it) {
         NodeType candidate = *it;
         if (!ruleAssignableToRow(node, candidate)) continue;
 
@@ -179,7 +179,7 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
             if (!ruleSiblingMatches(map, node, candidate)) continue;
         }
 
-        it = std::vector<NodeType>::reverse_iterator(roomList.erase(std::next(it).base()));
+        roomList.erase(it);
         return candidate;
     }
 
