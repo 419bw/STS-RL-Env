@@ -170,7 +170,7 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
 
     int y = node.y - 1;
 
-    for (auto it = roomList.begin(); it != roomList.end(); ++it) {
+    for (auto it = roomList.rbegin(); it != roomList.rend(); ++it) {
         NodeType candidate = *it;
         if (!ruleAssignableToRow(node, candidate)) continue;
 
@@ -179,7 +179,7 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
             if (!ruleSiblingMatches(map, node, candidate)) continue;
         }
 
-        roomList.erase(it);
+        it = std::vector<NodeType>::reverse_iterator(roomList.erase(std::next(it).base()));
         return candidate;
     }
 
@@ -237,6 +237,8 @@ int getCommonAncestor(int x1, int y1, int x2, int y2,
     int l_x = x1, l_y = y1;
     int r_x = x2, r_y = y2;
 
+    // 注意：这里使用 x1 < y2 是原版源码的 Bug，应该用 x1 < x2
+    // 但为复刻原版行为，保留此 Bug
     if (x1 < y2) {
         l_x = x1; l_y = y1;
         r_x = x2; r_y = y2;
