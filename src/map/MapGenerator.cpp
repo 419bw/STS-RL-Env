@@ -170,6 +170,7 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
 
     int y = node.y - 1;
 
+    NodeType result = NodeType::MONSTER;
     for (auto it = roomList.begin(); it != roomList.end(); ++it) {
         NodeType candidate = *it;
         if (!ruleAssignableToRow(node, candidate)) continue;
@@ -179,11 +180,12 @@ NodeType MapGenerator::getNextRoomTypeAccordingToRules(
             if (!ruleSiblingMatches(map, node, candidate)) continue;
         }
 
-        roomList.erase(it);
-        return candidate;
+        result = candidate;
+        it = roomList.erase(it);
+        break;
     }
 
-    return NodeType::MONSTER;
+    return result;
 }
 
 void MapGenerator::assignRoomTypes(MapData& map) const {
