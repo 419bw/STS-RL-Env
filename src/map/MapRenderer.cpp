@@ -24,7 +24,7 @@
 // 竖线从 REST 节点底部（row 29）开始向上画到 row 28，覆盖 phantom slash 行，
 // 最终竖线在 row 28 的位置正好穿过 slash 斜线，形成完整的连接视觉效果。
 // ============================================================
-static const int BOSS_HEIGHT = 5;
+static const int BOSS_HEIGHT = 4;
 
 int MapRenderer::maxFloorFromMap(const MapData& map) {
     int maxFloor = 0;
@@ -171,15 +171,6 @@ void MapRenderer::render(const MapData& map) {
             // 跳过本层到 Boss 的连线（这部分在后面单独处理）
             if (node.y == maxFloor) continue;
 
-            // ================================================
-            // 跳过 REST 节点到 phantom 层的连接 slash
-            // REST 节点在 y=maxFloor-1（即 floor=14）的下一层（y=maxFloor）
-            // 有一些 phantom next_x 连线指向不存在的节点（代码遗留）。
-            // 这些 phantom slash 会在后面的 REST→Boss 竖线逻辑中统一处理，
-            // 所以这里直接跳过 REST 层的这类连接。
-            // ================================================
-            if (node.type == NodeType::REST && node.y == maxFloor - 1) continue;
-
             // 计算连接斜线所在的 canvas 行
             // midRow = y1*2，例如 y1=14 → 28
             int connRow = midRow(node.y, node.y + 1, maxFloor);
@@ -223,9 +214,9 @@ void MapRenderer::render(const MapData& map) {
     //   phantom slash row = bossTop - 1 = 29
     //   gap row = bossTop - 2 = 28
     // ========================================================
-    int bossTop = maxFloor * 2;        // 例如：15*2 = 30
-    int bossContentRow = bossTop + 1;  // 31，Boss 盒子所在行
-    int bossBotRow = bossTop + 2;      // 32，Boss 底边框
+    int bossTop = maxFloor * 2 + 1;        // 例如：15*2+1 = 31
+    int bossContentRow = bossTop + 1;  // 32，Boss 盒子所在行
+    int bossBotRow = bossTop + 2;      // 33，Boss 底边框
 
     // 绘制 Boss 顶边框（'+----...---+'）
     canvas[bossTop][0] = '+';
