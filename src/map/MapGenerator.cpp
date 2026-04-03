@@ -1,5 +1,6 @@
 #include "src/map/MapGenerator.h"
 #include <algorithm>
+#include <functional>
 #include <numeric>
 
 MapGenerator::MapGenerator(const MapGeneratorParams& params) : params_(params) {
@@ -167,22 +168,18 @@ bool MapGenerator::ruleSiblingMatches(const MapData& map, const MapNode& node, N
 NodeType MapGenerator::getNextRoomTypeAccordingToRules(
     const MapData& map, MapNode& node, std::vector<NodeType>& roomList) const {
 
-    if (node.y == 1) {
-        if (!roomList.empty()) {
-            NodeType t = roomList.back();
-            roomList.pop_back();
-            return t;
-        }
-        return NodeType::MONSTER;
-    }
+    int y = node.y - 1;
 
-    for (auto it = roomList.rbegin(); it != roomList.rend(); ++it) {
+    for (auto it = roomList.begin(); it != roomList.end(); ++it) {
         NodeType candidate = *it;
         if (!ruleAssignableToRow(node, candidate)) continue;
-        if (!ruleParentMatches(map, node, candidate)) continue;
-        if (!ruleSiblingMatches(map, node, candidate)) continue;
 
-        it = std::vector<NodeType>::reverse_iterator(roomList.erase(std::next(it).base()));
+        if (y != 0) {
+            if (!ruleParentMatches(map, node, candidate)) continue;
+            if (!ruleSiblingMatches(map, node, candidate)) continue;
+        }
+
+        roomList.erase(it);
         return candidate;
     }
 
@@ -193,6 +190,10 @@ void MapGenerator::assignRoomTypes(MapData& map) const {
     int total = countValidNodes(map);
     std::vector<NodeType> roomList;
     fillRoomList(roomList, total);
+
+    while (roomList.size() < static_cast<size_t>(total)) {
+        roomList.push_back(NodeType::MONSTER);
+    }
 
     for (int y = 0; y < (int)map.size(); ++y) {
         if (getNodeType(y + 1) != NodeType::NONE) continue;
@@ -214,6 +215,80 @@ void MapGenerator::assignRoomTypes(MapData& map) const {
     }
 }
 
+namespace {
+
+int randRange(std::mt19937& rng, int min, int max) {
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(rng);
+}
+
+struct InternalNode {
+    int x;
+    int y;
+    std::vector<int> edges;
+    std::vector<int> parents;
+};
+
+int getCommonAncestor(int x1, int y1, int x2, int y2,
+                      const std::vector<std::vector<InternalNode>>& nodes,
+                      int maxDepth) {
+    if (y1 != y2 || x1 == x2) return -1;
+
+    int l_x = x1, l_y = y1;
+    int r_x = x2, r_y = y2;
+
+    if (x1 < y2) {
+        l_x = x1; l_y = y1;
+        r_x = x2; r_y = y2;
+    } else {
+        l_x = x2; l_y = y2;
+        r_x = x1; r_y = y1;
+    }
+
+    int currentY = y1;
+    int minY = std::max(0, y1 - maxDepth);
+
+    while (currentY >= minY) {
+        if (l_x < 0 || r_x < 0) break;
+        if (currentY < 0 || currentY >= (int)nodes.size()) break;
+
+        const auto& lNode = nodes[currentY][l_x];
+        const auto& rNode = nodes[currentY][r_x];
+
+        if (lNode.parents.empty() || rNode.parents.empty()) break;
+
+        int lParentX = -1, rParentX = -1;
+        for (int px : lNode.parents) {
+            lParentX = std::max(lParentX, px);
+        }
+        for (int px : rNode.parents) {
+            rParentX = std::min(rParentX, px);
+        }
+
+        if (lParentX == rParentX && currentY > 0) {
+            return currentY;
+        }
+
+        l_x = lParentX;
+        r_x = rParentX;
+        currentY--;
+    }
+
+    return -1;
+}
+
+int getMaxEdge(const std::vector<int>& edges) {
+    if (edges.empty()) return -1;
+    return *std::max_element(edges.begin(), edges.end());
+}
+
+int getMinEdge(const std::vector<int>& edges) {
+    if (edges.empty()) return -1;
+    return *std::min_element(edges.begin(), edges.end());
+}
+
+}
+
 void MapGenerator::buildTopology(MapData& map) const {
     int H = params_.height;
     int W = params_.width;
@@ -221,147 +296,195 @@ void MapGenerator::buildTopology(MapData& map) const {
 
     if (H <= 0 || W <= 0 || PD <= 0) return;
 
-    struct PathState {
-        int x;
-        int y;
-        int ancestor_x;
-        int ancestor_y;
-        int row;
-    };
-
-    std::vector<std::vector<bool>> hasNode(H, std::vector<bool>(W, false));
-    std::vector<std::vector<std::vector<int>>> nextLinks(H, std::vector<std::vector<int>>(W));
-    std::vector<std::vector<std::vector<int>>> prevLinks(H, std::vector<std::vector<int>>(W));
-
-    std::vector<PathState> paths(PD);
-
-    for (int i = 0; i < PD; ++i) {
-        int x;
-        if (i == 0) {
-            x = std::uniform_int_distribution<int>(0, W - 1)(rng_);
-        } else {
-            do {
-                x = std::uniform_int_distribution<int>(0, W - 1)(rng_);
-            } while (i == 1 && x == paths[0].x);
-        }
-        paths[i] = {x, 0, x, 0, 0};
-        hasNode[0][x] = true;
-    }
-
-    for (int row = 0; row < H - 1; ++row) {
-        std::vector<PathState> nextPaths;
-        std::vector<PathState> survivingPaths;
-
-        for (auto& p : paths) {
-            if (p.row != row) {
-                survivingPaths.push_back(p);
-                continue;
-            }
-
-            if (p.y >= H - 1) continue;
-
-            std::vector<int> dirs;
-            if (p.x == 0) {
-                dirs = {0, 1};
-            } else if (p.x == W - 1) {
-                dirs = {-1, 0};
-            } else {
-                dirs = {-1, 0, 1};
-            }
-
-            std::vector<int> candidates;
-            for (int d : dirs) {
-                candidates.push_back(p.x + d);
-            }
-
-            int chosenX = p.x;
-            std::uniform_int_distribution<int> dist(0, (int)candidates.size() - 1);
-            int dirIdx = dist(rng_);
-            chosenX = candidates[dirIdx];
-            int chosenDir = dirs[dirIdx];
-
-            bool blocked = false;
-            if (!prevLinks[p.y + 1][chosenX].empty()) {
-                int ancestorGap = (p.y + 1) - p.ancestor_y;
-                if (ancestorGap < params_.minAncestorGap) {
-                    blocked = true;
-                }
-            }
-
-            if (blocked) {
-                std::vector<int> alts;
-                if (chosenDir == 0) {
-                    if (p.x > 0) alts.push_back(p.x - 1);
-                    if (p.x < W - 1) alts.push_back(p.x + 1);
-                } else if (chosenDir == -1) {
-                    if (p.x < W - 1) alts.push_back(p.x + 1);
-                    alts.push_back(p.x);
-                } else {
-                    if (p.x > 0) alts.push_back(p.x - 1);
-                    alts.push_back(p.x);
-                }
-                if (!alts.empty()) {
-                    std::uniform_int_distribution<int> adist(0, (int)alts.size() - 1);
-                    chosenX = alts[adist(rng_)];
-                }
-            }
-
-            int leftMaxX = -1;
-            for (int lx = 0; lx < p.x; ++lx) {
-                if (nextLinks[p.y][lx].size() > 0) {
-                    for (int nx : nextLinks[p.y][lx]) {
-                        leftMaxX = std::max(leftMaxX, nx);
-                    }
-                }
-            }
-
-            int rightMinX = W;
-            for (int rx = p.x + 1; rx < W; ++rx) {
-                if (nextLinks[p.y][rx].size() > 0) {
-                    for (int nx : nextLinks[p.y][rx]) {
-                        rightMinX = std::min(rightMinX, nx);
-                    }
-                }
-            }
-
-            if (chosenX < leftMaxX + 1) chosenX = leftMaxX + 1;
-            if (chosenX > rightMinX - 1) chosenX = rightMinX - 1;
-            chosenX = std::max(0, std::min(W - 1, chosenX));
-
-            hasNode[p.y + 1][chosenX] = true;
-            nextLinks[p.y][p.x].push_back(chosenX);
-            prevLinks[p.y + 1][chosenX].push_back(p.x);
-
-            bool merged = false;
-            for (auto& sp : survivingPaths) {
-                if (sp.x == chosenX && sp.y == p.y + 1) {
-                    merged = true;
-                    sp.ancestor_x = chosenX;
-                    sp.ancestor_y = p.y + 1;
-                    break;
-                }
-            }
-
-            if (!merged) {
-                survivingPaths.push_back({chosenX, p.y + 1, chosenX, p.y + 1, row + 1});
-            }
-
-            (void)nextPaths;
-        }
-
-        paths = survivingPaths;
-
-        for (int x = 0; x < W; ++x) {
-            auto& v = nextLinks[row][x];
-            std::sort(v.begin(), v.end());
-            v.erase(std::unique(v.begin(), v.end()), v.end());
-        }
-    }
-
+    std::vector<std::vector<InternalNode>> nodes(H, std::vector<InternalNode>(W));
     for (int y = 0; y < H; ++y) {
         for (int x = 0; x < W; ++x) {
-            if (hasNode[y][x]) {
-                map[y].push_back({x, y + 1, NodeType::NONE, nextLinks[y][x]});
+            nodes[y][x] = InternalNode{x, y, {}, {}};
+        }
+    }
+
+    // ============================================================
+    // 路径生成核心函数（模拟源码的 _createPaths 递归逻辑）
+    //
+    // 从 (srcX, srcY) 开始，逐行向下生成路径，直到到达地图底部。
+    // 每一步随机选择左/直/右方向，并经过祖先间距检查和邻居交叉检查。
+    // ============================================================
+    std::function<void(int, int)> createPath = [&](int srcX, int srcY) {
+        int currentX = srcX;
+        int currentY = srcY;
+
+        while (true) {
+            if (currentY >= H) break;
+
+            // ========================================================
+            // 到达最后一行：创建 Boss 边
+            //
+            // Boss 边是一个特殊的边，值为 W（超出正常 x 坐标范围 [0, W-1]）。
+            // 这代表通往 Boss 的出口，不是连接到下一层的普通边。
+            //
+            // 注意：Boss 边必须被正确处理，否则最后一行的节点不会被添加到 map 中。
+            // 参见下方的节点添加逻辑（hasBossEdge 检查）。
+            // ========================================================
+            if (currentY + 1 >= H) {
+                nodes[currentY][currentX].edges.push_back(W);
+                std::sort(nodes[currentY][currentX].edges.begin(),
+                          nodes[currentY][currentX].edges.end());
+                break;
+            }
+
+            int rowEndNode = W - 1;
+            int min, max;
+            if (currentX == 0) {
+                min = 0; max = 1;
+            } else if (currentX == rowEndNode) {
+                min = -1; max = 0;
+            } else {
+                min = -1; max = 1;
+            }
+
+            int newEdgeX = currentX + randRange(rng_, min, max);
+            int newEdgeY = currentY + 1;
+
+            InternalNode& targetCandidate = nodes[newEdgeY][newEdgeX];
+
+            if (!targetCandidate.parents.empty()) {
+                for (int parentX : targetCandidate.parents) {
+                    if (parentX != currentX) {
+                        int ancestorY = getCommonAncestor(
+                            parentX, newEdgeY, currentX, currentY,
+                            nodes, params_.maxAncestorGap);
+
+                        if (ancestorY >= 0) {
+                            int ancestorGap = newEdgeY - ancestorY;
+                            if (ancestorGap < params_.minAncestorGap) {
+                                if (newEdgeX > currentX) {
+                                    newEdgeX = currentX + randRange(rng_, -1, 0);
+                                    if (newEdgeX < 0) newEdgeX = currentX;
+                                } else if (newEdgeX == currentX) {
+                                    newEdgeX = currentX + randRange(rng_, -1, 1);
+                                    if (newEdgeX > rowEndNode) newEdgeX = currentX - 1;
+                                    else if (newEdgeX < 0) newEdgeX = currentX + 1;
+                                } else {
+                                    newEdgeX = currentX + randRange(rng_, 0, 1);
+                                    if (newEdgeX > rowEndNode) newEdgeX = currentX;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (currentX > 0) {
+                const InternalNode& leftNode = nodes[currentY][currentX - 1];
+                if (!leftNode.edges.empty()) {
+                    int leftMaxEdge = getMaxEdge(leftNode.edges);
+                    if (leftMaxEdge >= 0 && leftMaxEdge > newEdgeX) {
+                        newEdgeX = leftMaxEdge;
+                    }
+                }
+            }
+
+            if (currentX < rowEndNode) {
+                const InternalNode& rightNode = nodes[currentY][currentX + 1];
+                if (!rightNode.edges.empty()) {
+                    int rightMinEdge = getMinEdge(rightNode.edges);
+                    if (rightMinEdge >= 0 && rightMinEdge < newEdgeX) {
+                        newEdgeX = rightMinEdge;
+                    }
+                }
+            }
+
+            newEdgeX = std::max(0, std::min(rowEndNode, newEdgeX));
+
+            nodes[currentY][currentX].edges.push_back(newEdgeX);
+            std::sort(nodes[currentY][currentX].edges.begin(),
+                      nodes[currentY][currentX].edges.end());
+
+            nodes[newEdgeY][newEdgeX].parents.push_back(currentX);
+
+            currentX = newEdgeX;
+            currentY = newEdgeY;
+        }
+    };
+
+    int firstStartingNode = -1;
+    for (int i = 0; i < PD; ++i) {
+        int startingNode = randRange(rng_, 0, W - 1);
+
+        if (i == 0) {
+            firstStartingNode = startingNode;
+        }
+
+        while (startingNode == firstStartingNode && i == 1) {
+            startingNode = randRange(rng_, 0, W - 1);
+        }
+
+        createPath(startingNode, 0);
+    }
+
+    {
+        std::vector<std::pair<int, int>> existingEdges;
+        std::vector<int> deleteList;
+
+        for (int x = 0; x < W; ++x) {
+            InternalNode& node = nodes[0][x];
+            if (node.edges.empty()) continue;
+
+            existingEdges.clear();
+            deleteList.clear();
+
+            for (size_t i = 0; i < node.edges.size(); ++i) {
+                int edge = node.edges[i];
+                bool isDuplicate = false;
+                for (const auto& existing : existingEdges) {
+                    if (existing.first == edge && existing.second == 1) {
+                        isDuplicate = true;
+                        deleteList.push_back(static_cast<int>(i));
+                        break;
+                    }
+                }
+                if (!isDuplicate) {
+                    existingEdges.emplace_back(edge, 1);
+                }
+            }
+
+            for (auto it = deleteList.rbegin(); it != deleteList.rend(); ++it) {
+                node.edges.erase(node.edges.begin() + *it);
+            }
+        }
+    }
+
+    // ============================================================
+    // 将内部节点结构转换为最终 MapData
+    //
+    // 关键点：Boss 边的处理
+    //
+    // 普通边的值范围是 [0, W-1]，代表下一层的 x 坐标。
+    // Boss 边的值是 W，代表通往 Boss 的出口（不是真实的节点坐标）。
+    //
+    // 问题：最后一行的节点只有 Boss 边，没有普通边。
+    // 如果只检查 nextXList 是否为空，这些节点会被遗漏。
+    // 遗漏后，applyFixedFloors 无法设置第15层为 REST。
+    //
+    // 解决：额外检查 hasBossEdge，确保有 Boss 边的节点也被添加。
+    // 注意：Boss 边不存储在 next_x 中（它不是真实的节点连接）。
+    // ============================================================
+    for (int y = 0; y < H; ++y) {
+        for (int x = 0; x < W; ++x) {
+            const InternalNode& inode = nodes[y][x];
+            if (!inode.edges.empty()) {
+                std::vector<int> nextXList;
+                bool hasBossEdge = false;
+                for (int edge : inode.edges) {
+                    if (edge < W) {
+                        nextXList.push_back(edge);
+                    } else {
+                        hasBossEdge = true;
+                    }
+                }
+                if (!nextXList.empty() || hasBossEdge) {
+                    map[y].push_back({x, y + 1, NodeType::NONE, nextXList});
+                }
             }
         }
     }

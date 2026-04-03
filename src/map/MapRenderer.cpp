@@ -12,17 +12,20 @@
 // ============================================================
 // Boss 区域高度（单位：行）
 //
-// 布局（从上到下，BOSS_HEIGHT=5）：
-//   bossTop (row 32)       : +------------------------------+  ← Boss 顶边框（'-----...'）
-//   bossContentRow (31)   : |             [B]              |  ← Boss 内容行（竖线边框 + [B]）
-//   bossBotRow (30)       : +------------------------------+  ← Boss 底边框（'-----...'）
-//   phantom slash row (29):     /           \                  ← REST→Boss 连接 slash 斜线
-//   gap row (28)          :     |           |                ← 竖线从 REST 延伸下来的行（选一列）
+// Boss 区域布局（从下到上，共 4 行）：
+//   row 30 (bossTop-1)     : REST→Boss 连接竖线（phantom slash 行）
+//   row 31 (bossTop)       : +------------------------------+  ← Boss 顶边框
+//   row 32 (bossContentRow): |             [B]              |  ← Boss 内容行
+//   row 33 (bossBotRow)    : +------------------------------+  ← Boss 底边框
 //
-// 注意：phantom slash row 是 bossTop - 1，即 Boss 顶边框的上一行。
-// 这个位置不在任何房间节点层内，专门用来画 REST 斜向左上/斜向右上连入 Boss 的 slash。
-// 竖线从 REST 节点底部（row 29）开始向上画到 row 28，覆盖 phantom slash 行，
-// 最终竖线在 row 28 的位置正好穿过 slash 斜线，形成完整的连接视觉效果。
+// 计算公式（以 maxFloor=15 为例）：
+//   totalRows = maxFloor * 2 + BOSS_HEIGHT = 15*2 + 4 = 34
+//   bossTop = maxFloor * 2 + 1 = 31
+//   bossContentRow = bossTop + 1 = 32
+//   bossBotRow = bossTop + 2 = 33（正好是最后一行）
+//
+// REST 节点在第 15 层，nodeRow = (15-1)*2+1 = 29
+// 连接竖线从 row 30 画到 row 30（bossTop-1）
 // ============================================================
 static const int BOSS_HEIGHT = 4;
 
@@ -202,21 +205,21 @@ void MapRenderer::render(const MapData& map) {
     // ========================================================
     // 第二遍：绘制 Boss 区域
     //
-    // Boss 区域占 BOSS_HEIGHT=5 行（从 bossTop=row 30 开始向上）：
-    //   bossTop (row 30)       : +------------------------------+  ← Boss 顶框
-    //   bossContentRow (row 31) : |             [B]              |  ← Boss 内容
-    //   bossBotRow (row 32)     : +------------------------------+  ← Boss 底框
-    //   (phantom slash 行 = bossTop-1 = 29，斜线在后面单独画)
-    //   (gap 行 = bossTop-2 = 28，竖线从此往下)
+    // Boss 区域占 3 行（bossTop, bossContentRow, bossBotRow）
+    // 加上 1 行连接线空间，共 BOSS_HEIGHT=4 行。
     //
-    // 注意：bossTop = maxFloor * 2
-    //   maxFloor=15 → bossTop = 30
-    //   phantom slash row = bossTop - 1 = 29
-    //   gap row = bossTop - 2 = 28
+    // 绘制顺序（从下到上）：
+    //   row 31 (bossTop)       : +------------------------------+  ← Boss 顶框
+    //   row 32 (bossContentRow): |             [B]              |  ← Boss 内容
+    //   row 33 (bossBotRow)    : +------------------------------+  ← Boss 底框
+    //
+    // 注意：bossTop = maxFloor * 2 + 1
+    //   maxFloor=15 → bossTop = 31
+    //   bossBotRow = 33（画布最后一行）
     // ========================================================
-    int bossTop = maxFloor * 2 + 1;        // 例如：15*2+1 = 31
-    int bossContentRow = bossTop + 1;  // 32，Boss 盒子所在行
-    int bossBotRow = bossTop + 2;      // 33，Boss 底边框
+    int bossTop = maxFloor * 2 + 1;
+    int bossContentRow = bossTop + 1;
+    int bossBotRow = bossTop + 2;
 
     // 绘制 Boss 顶边框（'+----...---+'）
     canvas[bossTop][0] = '+';
