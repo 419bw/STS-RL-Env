@@ -1,6 +1,28 @@
 # STS_CPP 编译指南
 
-## 快速编译命令
+## CMake 编译（推荐）
+
+### 1. 配置项目
+
+```powershell
+cmake -B cmake_build -S . -G "MinGW Makefiles"
+```
+
+### 2. 编译
+
+```powershell
+cmake --build cmake_build
+```
+
+### 3. 运行
+
+```powershell
+.\cmake_build\bin\STS_Game.exe
+```
+
+---
+
+## g++ 手动编译
 
 ### 1. 编译所有源文件
 

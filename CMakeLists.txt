@@ -29,17 +29,39 @@ set(EVENT_SOURCES
     # 事件模块无.cpp文件，仅头文件
 )
 
+set(ENGINE_SOURCES
+    src/engine/GameEngine.cpp
+)
+
+set(STATE_SOURCES
+    src/state/RunState.cpp
+    src/state/CombatState.cpp
+)
+
 set(ACTION_SOURCES
+    src/action/ActionManager.cpp
     src/action/Actions.cpp
+    src/action/PlayerActions.cpp
     src/action/LambdaAction.cpp
 )
 
-set(POWER_SOURCES
-    src/power/Powers.cpp
+set(SYSTEM_SOURCES
+    src/system/DeckSystem.cpp
 )
 
 set(CHARACTER_SOURCES
     src/character/Character.cpp
+    src/character/Monster.cpp
+    src/character/monster/JawWorm.cpp
+)
+
+set(INTENT_SOURCES
+    src/intent/Intent.cpp
+    src/intent/IntentBrain.cpp
+    src/intent/FixedBrain.cpp
+    src/intent/RandomBrain.cpp
+    src/intent/AdaptiveBrain.cpp
+    src/intent/brains/JawWormBrain.cpp
 )
 
 set(CARD_SOURCES
@@ -63,23 +85,35 @@ set(RULES_SOURCES
     src/rules/BasicRules.cpp
 )
 
-set(PLAYER_ACTIONS_SOURCES
-    src/action/PlayerActions.cpp
+set(POWER_SOURCES
+    src/power/Powers.cpp
+)
+
+set(POTION_SOURCES
+    src/potion/Potions.cpp
+)
+
+set(MAP_SOURCES
+    src/map/MapGenerator.cpp
+    src/map/MapRenderer.cpp
 )
 
 # 合并所有源文件
 set(ALL_SOURCES
-    ${CORE_SOURCES}
-    ${EVENT_SOURCES}
+    ${ENGINE_SOURCES}
+    ${STATE_SOURCES}
     ${ACTION_SOURCES}
-    ${POWER_SOURCES}
+    ${SYSTEM_SOURCES}
     ${CHARACTER_SOURCES}
+    ${INTENT_SOURCES}
     ${CARD_SOURCES}
     ${RELIC_SOURCES}
     ${GAMESTATE_SOURCES}
     ${FLOW_SOURCES}
     ${RULES_SOURCES}
-    ${PLAYER_ACTIONS_SOURCES}
+    ${POWER_SOURCES}
+    ${POTION_SOURCES}
+    ${MAP_SOURCES}
     src/main.cpp
 )
 
