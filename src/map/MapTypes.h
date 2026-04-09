@@ -23,6 +23,8 @@ enum class NodeType {
 // 坐标系说明：
 // - layer: Y轴（层级），0 = 底部起始层，值越大越靠近 Boss
 // - x: X轴归一化坐标 [0.0, 1.0]，0=最左，1=最右
+//
+// 【当前状态】：暂未使用，当前代码复用 MapRenderer.h 中的 MapNode 定义
 // ==========================================
 struct MapNode {
     int index;              // 在 nodes 数组中的全局索引

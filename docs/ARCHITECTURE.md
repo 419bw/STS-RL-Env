@@ -16,6 +16,7 @@ src/
 ├── gamestate/       # GameState 游戏状态容器
 ├── intent/          # Intent 意图系统（AI 决策）
 │   └── brains/      # 具体 Brain 实现
+├── map/             # 地图生成与渲染系统（MapGenerator + MapRenderer）
 ├── power/           # Power 状态效果系统
 ├── potion/          # Potion 药水系统
 ├── relic/           # Relic 遗物系统
@@ -44,6 +45,8 @@ src/
 | **IntentBrain** | AI 决策策略接口 | [IntentBrain.h](file:///j:\学习\项目\STS_CPP\src\intent\IntentBrain.h) |
 | **GameState** | 【遗留】旧战斗数据容器，已被 CombatState 替代 | [GameState.h](file:///j:\学习\项目\STS_CPP\src\gamestate\GameState.h) |
 | **ActionSystem** | 【遗留】旧动作执行器，已被 ActionManager 替代（无实际调用） | [ActionSystem.h](file:///j:\学习\项目\STS_CPP\src\system\ActionSystem.h) |
+| **MapGenerator** | 地图拓扑生成器：路径生成、房间类型分配 | [MapGenerator.h](file:///j:\学习\项目\STS_CPP\src\map\MapGenerator.h) |
+| **MapRenderer** | 地图渲染器：ANSI 虚拟画布 ASCII 输出 | [MapRenderer.h](file:///j:\学习\项目\STS_CPP\src\map\MapRenderer.h) |
 
 ---
 
