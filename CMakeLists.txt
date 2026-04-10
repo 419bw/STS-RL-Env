@@ -98,8 +98,8 @@ set(MAP_SOURCES
     src/map/MapRenderer.cpp
 )
 
-# 合并所有源文件
-set(ALL_SOURCES
+# 合并所有源文件（不含 main.cpp，供库和模块复用）
+set(ENGINE_LIB_SOURCES
     ${ENGINE_SOURCES}
     ${STATE_SOURCES}
     ${ACTION_SOURCES}
@@ -114,6 +114,10 @@ set(ALL_SOURCES
     ${POWER_SOURCES}
     ${POTION_SOURCES}
     ${MAP_SOURCES}
+)
+
+set(ALL_SOURCES
+    ${ENGINE_LIB_SOURCES}
     src/main.cpp
 )
 
@@ -126,6 +130,34 @@ add_executable(STS_Game ${ALL_SOURCES})
 target_include_directories(STS_Game PRIVATE
     ${CMAKE_SOURCE_DIR}
 )
+
+# ==========================================
+# RL 训练环境 (可选)
+#
+# 编译为 Python C 扩展模块 (.pyd)
+# 需要: pip install pybind11
+# 启用: cmake -DBUILD_RL_ENV=ON ..
+# ==========================================
+option(BUILD_RL_ENV "Build RL training environment (pybind11 module)" OFF)
+
+if(BUILD_RL_ENV)
+    find_package(pybind11 REQUIRED)
+
+    set(RL_SOURCES
+        src/rl/STSEnv.cpp
+        src/rl/pybind_module.cpp
+        ${ENGINE_LIB_SOURCES}
+    )
+
+    pybind11_add_module(sts_env ${RL_SOURCES})
+    target_include_directories(sts_env PRIVATE ${CMAKE_SOURCE_DIR})
+
+    if(MSVC)
+        target_compile_options(sts_env PRIVATE /bigobj)
+    endif()
+
+    message(STATUS "RL training environment: ENABLED")
+endif()
 
 # ==========================================
 # 模块库 (可选：用于模块化编译)

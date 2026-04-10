@@ -97,6 +97,77 @@ g++ -std=c++17 "j:\学习\项目\STS_CPP\build\TestMapRenderer.o" "j:\学习\项
 - 原因：构造函数为 private，std::make_unique 无法访问
 - 解决：使用 `std::unique_ptr<T>(new T(...))` 代替
 
+## RL 训练环境编译
+
+### 前置依赖
+
+```powershell
+pip install pybind11 stable-baselines3 sb3-contrib gymnasium numpy
+```
+
+### 1. 配置项目（启用 RL 环境）
+
+```powershell
+cmake -B cmake_build_rl -S . -G "MinGW Makefiles" -DBUILD_RL_ENV=ON
+```
+
+如果 MinGW 找不到 pybind11，需要指定 Python 路径：
+
+```powershell
+cmake -B cmake_build_rl -S . -G "MinGW Makefiles" -DBUILD_RL_ENV=ON -Dpybind11_DIR="$(python -m pybind11 --cmakedir)"
+```
+
+如果使用 MSVC（Visual Studio）：
+
+```powershell
+cmake -B cmake_build_rl -S . -DBUILD_RL_ENV=ON -Dpybind11_DIR="$(python -m pybind11 --cmakedir)"
+```
+
+### 2. 编译
+
+```powershell
+cmake --build cmake_build_rl
+```
+
+编译产物为 `cmake_build_rl/sts_env.cp3XX-win_amd64.pyd`。
+
+### 2.1 部署 MinGW 运行时 DLL（仅 MinGW 编译需要）
+
+MinGW 编译的 .pyd 依赖运行时 DLL，需复制到同一目录：
+
+```powershell
+Copy-Item "G:\mingw64\bin\libgcc_s_seh-1.dll","G:\mingw64\bin\libwinpthread-1.dll","G:\mingw64\bin\libstdc++-6.dll" -Destination "cmake_build_rl\"
+```
+
+> MSVC 编译无需此步骤。
+
+### 3. 验证
+
+```powershell
+python -c "import sys; sys.path.insert(0, 'cmake_build_rl'); import sts_env; env = sts_env.STSEnv(0); print('reset obs size:', len(env.reset())); print('action space:', env.action_space_size())"
+```
+
+### 4. 训练
+
+```powershell
+cd python
+python train_jawworm.py
+```
+
+### RL 编译常见错误
+
+#### Could not find pybind11
+- 原因：pybind11 未安装或 CMake 找不到
+- 解决：`pip install pybind11` 并用 `-Dpybind11_DIR=` 指定路径
+
+#### fatal error LNK1104: cannot open file 'python3xx.lib'
+- 原因：MSVC 编译时找不到 Python 库
+- 解决：确保 Python 安装时勾选了 "Download debug binaries"，或使用 MinGW
+
+#### ImportError: DLL load failed
+- 原因：编译的 .pyd 不在 Python 搜索路径中
+- 解决：将 .pyd 所在目录加入 `sys.path`，或复制到 Python site-packages
+
 ## 源文件清单
 
 | 模块 | 源文件 |
@@ -115,5 +186,6 @@ g++ -std=c++17 "j:\学习\项目\STS_CPP\build\TestMapRenderer.o" "j:\学习\项
 | rules | BasicRules.cpp |
 | power | Powers.cpp |
 | potion | Potions.cpp |
-| map | GameMap.cpp, MapRenderer.cpp |
+| map | MapGenerator.cpp, MapRenderer.cpp |
+| rl | STSEnv.cpp, pybind_module.cpp |
 | test | TestMapRenderer.cpp |
