@@ -48,3 +48,12 @@ public:
     PainCard() : CloneableCard("Pain", 2, CardType::ATTACK, CardTarget::ENEMY) {}
     void use(GameEngine& engine, std::shared_ptr<Character> target) override;
 };
+
+// ==========================================
+// 具体卡牌：防御 (Defend)
+// ==========================================
+class DefendCard : public CloneableCard<DefendCard> {
+public:
+    DefendCard() : CloneableCard("Defend", 1, CardType::SKILL, CardTarget::SELF) {}
+    void use(GameEngine& engine, std::shared_ptr<Character> target) override;
+};

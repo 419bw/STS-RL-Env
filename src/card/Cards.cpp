@@ -89,3 +89,19 @@ void PainCard::use(GameEngine& engine, std::shared_ptr<Character> target) {
             combat.player, target, std::make_shared<VulnerablePower>(2)));
     }
 }
+
+// ==========================================
+// DefendCard 实现
+//
+// 效果：给自己 5 点格挡
+// target 在 SELF 场景下恒为 player，由 PlayerActions 保证
+// ==========================================
+void DefendCard::use(GameEngine& engine, std::shared_ptr<Character> target) {
+    auto& combat = *engine.combatState;
+    STS_LOG(combat, "打出了 防御!\n");
+
+    if (target) {
+        engine.actionManager.addAction(std::make_unique<GainBlockAction>(
+            target, 5));
+    }
+}

@@ -26,12 +26,9 @@ std::vector<float> STSEnv::reset() {
 
     for (int i = 0; i < 5; ++i)
         engine_->runState->masterDeck.push_back(std::make_shared<StrikeCard>());
-    for (int i = 0; i < 3; ++i)
-        engine_->runState->masterDeck.push_back(std::make_shared<DeadlyPoisonCard>());
-    for (int i = 0; i < 2; ++i)
-        engine_->runState->masterDeck.push_back(std::make_shared<WhirlwindCard>());
-    for (int i = 0; i < 3; ++i)
-        engine_->runState->masterDeck.push_back(std::make_shared<ShurikenCard>());
+    for (int i = 0; i < 5; ++i)
+        engine_->runState->masterDeck.push_back(std::make_shared<DefendCard>());
+    engine_->runState->masterDeck.push_back(std::make_shared<PainCard>());
 
     setupCombat();
 
@@ -88,11 +85,15 @@ bool STSEnv::isBattleOver() const {
 // action=0: EndTurn → tick 直到下一个决策点
 // action=1~10: Play hand[action-1] → 立即返回
 //
-// 潜在坑：playCard 后 monster 可能死亡（checkBattleEndCondition
-// 在 executeUntilBlocked 内部被调用），必须立即检查
+// action 合法性由 Gymnasium MaskablePPO 保证，防御性加一层 clamp
+// 无效 action 视为 no-op（不推进状态，不扣奖励）
 // ==========================================
 StepResult STSEnv::step(int action) {
     bool done = false;
+
+    if (action < 0 || action >= ACTION_SPACE_SIZE) {
+        action = 0;
+    }
 
     if (action == 0) {
         PlayerActions::endTurn(*engine_, *flow_);
