@@ -26,6 +26,11 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 
+# CMake build directories
+cmake_build/
+cmake_build_rl/
+cmake_build_test/
+
 # 其他
 *.log
 *.tmp

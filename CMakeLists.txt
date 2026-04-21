@@ -202,3 +202,71 @@ message(STATUS "CMake version: ${CMAKE_VERSION}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Output directory: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
+# ==========================================
+# 测试编译配置 (Catch2 local)
+# ==========================================
+set(CATCH2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/third_party)
+set(CATCH2_SOURCES ${CMAKE_SOURCE_DIR}/third_party/catch_amalgamated.cpp)
+
+set(ENGINE_SOURCES
+    src/engine/GameEngine.cpp
+    src/state/RunState.cpp
+    src/state/CombatState.cpp
+    src/action/ActionManager.cpp
+    src/action/Actions.cpp
+    src/action/PlayerActions.cpp
+    src/action/LambdaAction.cpp
+    src/system/DeckSystem.cpp
+    src/flow/CombatFlow.cpp
+    src/rules/BasicRules.cpp
+    src/power/Powers.cpp
+    src/potion/Potions.cpp
+    src/character/Character.cpp
+    src/character/Monster.cpp
+    src/character/monster/JawWorm.cpp
+    src/intent/Intent.cpp
+    src/intent/IntentBrain.cpp
+    src/intent/FixedBrain.cpp
+    src/intent/RandomBrain.cpp
+    src/intent/AdaptiveBrain.cpp
+    src/intent/brains/JawWormBrain.cpp
+    src/card/Cards.cpp
+    src/relic/Relics.cpp
+    src/relic/AbstractRelic.cpp
+    src/gamestate/GameState.cpp
+    src/map/MapGenerator.cpp
+    src/map/MapRenderer.cpp
+)
+
+set(TEST_SOURCES
+    ${CATCH2_SOURCES}
+    ${ENGINE_SOURCES}
+    src/test/test_main.cpp
+    src/test/unit/TestDamagePipeline.cpp
+    src/test/unit/TestCardSelection.cpp
+    src/test/unit/TestMonster.cpp
+    src/test/unit/TestPotionSystem.cpp
+    src/test/unit/TestRandomDamageAction.cpp
+    src/test/unit/TestVulnerableRelic.cpp
+    src/test/unit/TestMapRenderer.cpp
+    src/test/unit/TestDeterminism.cpp
+    src/test/unit/TestEventBus.cpp
+    src/test/unit/TestActionManager.cpp
+    src/test/unit/TestLambdaAction.cpp
+    src/test/unit/TestDeckSystem.cpp
+    src/test/integration/TestCombatFlow.cpp
+    src/test/integration/TestFullRound.cpp
+)
+
+add_executable(STS_Tests ${TEST_SOURCES})
+
+target_include_directories(STS_Tests PRIVATE
+    ${CMAKE_SOURCE_DIR}
+    ${CATCH2_INCLUDE_DIR}
+)
+
+include(CTest)
+add_test(NAME STS_Tests COMMAND STS_Tests)
+
+message(STATUS "Unit tests: ENABLED (local Catch2)")
