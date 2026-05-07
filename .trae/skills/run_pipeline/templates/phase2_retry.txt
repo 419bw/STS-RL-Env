@@ -1,4 +1,0 @@
-Task: Code Revision.
-Original Code: {{stored_code}}
-Modification Request: {{human_feedback}}
-Constraint: Apply changes strictly. Output ONLY the revised code blocks.

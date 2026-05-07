@@ -9,6 +9,7 @@ build/
 # IDE 和编辑器
 .vscode/
 .idea/
+.trae/
 *.suo
 *.user
 *.sln.docstates

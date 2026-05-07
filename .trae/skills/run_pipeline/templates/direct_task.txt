@@ -1,3 +1,0 @@
-Task: Direct Implementation.
-Requirement: {{user_request}}
-Constraint: Follow existing code standards. Output ONLY the necessary code or solution. No architectural discussion needed.
